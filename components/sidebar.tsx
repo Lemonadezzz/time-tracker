@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, ChevronLeft, ChevronRight, Timer, FileText, BarChart3, Settings, Users, TrendingUp } from "lucide-react"
+import { LogOut, User, ChevronLeft, ChevronRight, Timer, FileText, BarChart3, Settings, Users, TrendingUp, Moon, Sun } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useTheme } from "@/lib/theme"
 
 interface SidebarProps {
   username: string
@@ -27,6 +28,7 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
   const [roleLoaded, setRoleLoaded] = useState(false)
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     setMounted(true)
@@ -111,15 +113,37 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
             <div className="flex justify-center" title={username}>
               <User className="w-4 h-4 text-muted-foreground" />
             </div>
+            <div className="flex justify-center">
+              <Button 
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                variant="ghost" 
+                size="sm" 
+                className="w-8 h-8 p-0" 
+                title="Toggle theme"
+              >
+                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
+            </div>
             <Button onClick={onLogout} variant="outline" size="sm" className="w-full p-2 bg-transparent" title="Logout">
               <LogOut className="w-4 h-4" />
             </Button>
           </>
         ) : (
           <>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <User className="w-4 h-4" />
-              <span className="truncate">{username}</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="w-4 h-4" />
+                <span className="truncate">{username}</span>
+              </div>
+              <Button 
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                variant="ghost" 
+                size="sm" 
+                className="w-8 h-8 p-0" 
+                title="Toggle theme"
+              >
+                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
             </div>
             <Button onClick={onLogout} variant="outline" size="sm" className="w-full gap-2 bg-transparent">
               <LogOut className="w-4 h-4" />

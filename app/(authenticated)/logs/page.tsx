@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "lucide-react"
-import TimeTable from "@/components/TimeTable"
+import TimeTable from "@/components/time-table"
 import { formatDuration } from "@/lib/utils"
 import { timeEntriesService } from "@/lib/timeEntries"
 

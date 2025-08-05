@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp } from "lucide-react"
-import TeamTimeTable from "@/components/TeamTimeTable"
+import TeamTimeTable from "@/components/team-time-table"
 import { formatDuration } from "@/lib/utils"
 
 interface TeamTimeEntry {

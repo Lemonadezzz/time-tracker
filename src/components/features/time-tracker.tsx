@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 import { Play, Square, Calendar } from "lucide-react"
 import DayTimeline from "./day-timeline" // Import the new component
-import TimeTable from "@/components/TimeTable" // Import the TimeTable component
+import TimeTable from "@/components/time-table" // Import the TimeTable component
 import { formatDuration } from "@/lib/utils" // Import formatDuration from utils
 import { timeEntriesService } from "@/lib/timeEntries"
 

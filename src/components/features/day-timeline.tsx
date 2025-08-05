@@ -15,7 +15,7 @@ interface DayTimelineProps {
 }
 
 const START_HOUR = 6 // 6 AM
-const END_HOUR = 22 // 10 PM (22:00)
+const END_HOUR = 22 // 10 PM (22:00) - timeline ends at 10 PM sharp
 const TOTAL_HOURS = END_HOUR - START_HOUR
 const MINUTES_PER_HOUR = 60
 const TOTAL_MINUTES = TOTAL_HOURS * MINUTES_PER_HOUR
@@ -90,9 +90,14 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
         {/* Time Entry Highlights */}
         {todayCompletedEntries.map((entry) => {
           const timeInDate = parseTime(entry.timeIn, entry.date)
-          const timeOutDate = entry.timeOut ? parseTime(entry.timeOut, entry.date) : null
+          let timeOutDate = entry.timeOut ? parseTime(entry.timeOut, entry.date) : null
 
           if (!timeOutDate) return null // Only show completed entries
+
+          // Cap timeOut to 10 PM if it goes beyond
+          if (timeOutDate.getHours() >= 22) {
+            timeOutDate = new Date(timeOutDate.getFullYear(), timeOutDate.getMonth(), timeOutDate.getDate(), 22, 0, 0)
+          }
 
           // Calculate start and end minutes from 6 AM
           const startMinutesFromDayStart =
