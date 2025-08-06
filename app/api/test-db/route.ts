@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { getDatabase } from '@/lib/mongodb'
 
 export async function GET() {
   try {
-    const client = await clientPromise
-    const db = client.db('timetracker')
+    const db = await getDatabase()
     const users = await db.collection('users').findOne({})
     
     return NextResponse.json({ 

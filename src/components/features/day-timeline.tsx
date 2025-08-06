@@ -25,8 +25,8 @@ const HOUR_MARKER_HEIGHT = 20 // Height for hour labels
 const BAR_HEIGHT = 30 // Height of the green highlight bars
 
 export default function DayTimeline({ entries }: DayTimelineProps) {
-  const now = new Date()
-  const todayDateString = now.toLocaleDateString("en-CA") // YYYY-MM-DD
+  // Use the date from entries instead of hardcoded today
+  const entryDate = entries.length > 0 ? entries[0].date : new Date().toLocaleDateString("en-CA")
 
   // Generate hourly markers for even numbers only
   const hoursToDisplay = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => START_HOUR + i).filter(
@@ -39,8 +39,8 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
     return `${displayHour}${ampm}`
   }
 
-  // Filter entries for today and ensure they have timeOut
-  const todayCompletedEntries = entries.filter((entry) => entry.date === todayDateString && entry.timeOut !== null)
+  // Filter entries for the specific date and ensure they have timeOut
+  const completedEntries = entries.filter((entry) => entry.date === entryDate && entry.timeOut !== null)
 
   const parseTime = (timeString: string, dateString: string): Date => {
     // Combine date and time string to create a full Date object in local timezone
@@ -58,11 +58,11 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
     return new Date(year, month - 1, day, hour, minute, 0)
   }
 
-  if (todayCompletedEntries.length === 0) {
+  if (completedEntries.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-        <p>No completed time entries for today to display on the timeline.</p>
+        <p>No completed time entries for this date to display on the timeline.</p>
       </div>
     )
   }
@@ -88,7 +88,7 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
         })}
 
         {/* Time Entry Highlights */}
-        {todayCompletedEntries.map((entry) => {
+        {completedEntries.map((entry) => {
           const timeInDate = parseTime(entry.timeIn, entry.date)
           let timeOutDate = entry.timeOut ? parseTime(entry.timeOut, entry.date) : null
 

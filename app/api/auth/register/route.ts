@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import clientPromise from '@/lib/mongodb'
+import { getDatabase } from '@/lib/mongodb'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,8 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Username and password required' }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db('timetracker')
+    const db = await getDatabase()
     const users = db.collection('users')
 
     const existingUser = await users.findOne({ username })

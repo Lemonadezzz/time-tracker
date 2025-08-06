@@ -29,16 +29,20 @@ export function ThemeProvider({
   }, [theme])
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme") as Theme
-    if (stored) {
-      setTheme(stored)
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem("theme") as Theme
+      if (stored) {
+        setTheme(stored)
+      }
     }
   }, [])
 
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      localStorage.setItem("theme", theme)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("theme", theme)
+      }
       setTheme(theme)
     },
   }

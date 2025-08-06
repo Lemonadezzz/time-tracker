@@ -1,8 +1,11 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Clock } from "lucide-react"
+
+import { Clock, ChevronDown, ChevronRight } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
+import DayTimeline from "@/src/components/features/day-timeline"
 
 interface TeamTimeEntry {
   _id?: string
@@ -18,6 +21,13 @@ interface TeamTimeTableProps {
 }
 
 export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleDateString("en-US", {
@@ -27,7 +37,85 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
     })
   }
 
-  if (entries.length === 0) {
+  const toggleRow = (entryId: string) => {
+    const newExpanded = new Set(expandedRows)
+    if (newExpanded.has(entryId)) {
+      newExpanded.delete(entryId)
+    } else {
+      newExpanded.add(entryId)
+    }
+    setExpandedRows(newExpanded)
+  }
+
+  const getEntriesForUserAndDate = (username: string, date: string) => {
+    return entries.filter(entry => entry.username === username && entry.date === date)
+  }
+
+  // Merge fragmented entries by user and date
+  const mergedEntries = entries.reduce((acc, entry) => {
+    const key = `${entry.username}-${entry.date}`
+    
+    if (!acc[key]) {
+      acc[key] = {
+        ...entry,
+        timeIns: [entry.timeIn],
+        timeOuts: entry.timeOut ? [entry.timeOut] : [],
+        totalDuration: entry.duration
+      }
+    } else {
+      acc[key].timeIns.push(entry.timeIn)
+      if (entry.timeOut) acc[key].timeOuts.push(entry.timeOut)
+      acc[key].totalDuration += entry.duration
+    }
+    
+    return acc
+  }, {} as Record<string, any>)
+
+  // Convert to array and calculate earliest/latest times
+  const consolidatedEntries = Object.values(mergedEntries).map((entry: any) => {
+    const timeIns = entry.timeIns.sort()
+    const timeOuts = entry.timeOuts.sort()
+    
+    return {
+      _id: entry._id,
+      username: entry.username,
+      date: entry.date,
+      timeIn: timeIns[0], // Earliest time in
+      timeOut: timeOuts.length > 0 ? timeOuts[timeOuts.length - 1] : null, // Latest time out
+      duration: entry.totalDuration
+    }
+  })
+
+  if (!mounted) {
+    return (
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Time In</TableHead>
+              <TableHead>Time Out</TableHead>
+              <TableHead className="text-right">Duration</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {consolidatedEntries.map((entry) => (
+              <TableRow key={entry._id || `${entry.username}-${entry.date}-${entry.timeIn}`}>
+                <TableCell className="font-medium">{entry.username}</TableCell>
+                <TableCell>{formatDate(entry.date)}</TableCell>
+                <TableCell>{entry.timeIn}</TableCell>
+                <TableCell>{entry.timeOut || "-"}</TableCell>
+                <TableCell className="text-right font-mono">{formatDuration(entry.duration)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    )
+  }
+
+  if (consolidatedEntries.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -49,15 +137,37 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {entries.map((entry) => (
-            <TableRow key={entry._id || `${entry.username}-${entry.date}-${entry.timeIn}`}>
-              <TableCell className="font-medium">{entry.username}</TableCell>
-              <TableCell>{formatDate(entry.date)}</TableCell>
-              <TableCell>{entry.timeIn}</TableCell>
-              <TableCell>{entry.timeOut || "-"}</TableCell>
-              <TableCell className="text-right font-mono">{formatDuration(entry.duration)}</TableCell>
-            </TableRow>
-          ))}
+          {consolidatedEntries.map((entry) => {
+            const entryId = entry._id || `${entry.username}-${entry.date}-${entry.timeIn}`
+            const isExpanded = expandedRows.has(entryId)
+            const userDayEntries = getEntriesForUserAndDate(entry.username, entry.date)
+            
+            return (
+              <>
+                <TableRow key={entryId} className="cursor-pointer hover:bg-muted/50" onClick={() => toggleRow(entryId)}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      {entry.username}
+                    </div>
+                  </TableCell>
+                  <TableCell>{formatDate(entry.date)}</TableCell>
+                  <TableCell>{entry.timeIn}</TableCell>
+                  <TableCell>{entry.timeOut || "-"}</TableCell>
+                  <TableCell className="text-right font-mono">{formatDuration(entry.duration)}</TableCell>
+                </TableRow>
+                {isExpanded && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="p-0">
+                      <div className="p-4 bg-muted/20">
+                        <DayTimeline entries={userDayEntries.map(e => ({...e, id: e._id || `${e.username}-${e.date}-${e.timeIn}`, date: e.date}))} />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </>
+            )
+          })}
         </TableBody>
       </Table>
     </div>

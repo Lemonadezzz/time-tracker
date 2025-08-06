@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-import clientPromise from '@/lib/mongodb'
+import { getDatabase } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
 async function getUserFromToken(request: NextRequest) {
@@ -22,42 +22,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db('timetracker')
+    const db = await getDatabase()
     
-    const pipeline = [
-      {
-        $addFields: {
-          userObjectId: { $toObjectId: '$userId' }
-        }
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'userObjectId',
-          foreignField: '_id',
-          as: 'user'
-        }
-      },
-      {
-        $unwind: '$user'
-      },
-      {
-        $project: {
-          date: 1,
-          timeIn: 1,
-          timeOut: 1,
-          duration: 1,
-          createdAt: 1,
-          username: '$user.username'
-        }
-      },
-      {
-        $sort: { createdAt: -1 }
-      }
-    ]
-
-    const entries = await db.collection('timeentries').aggregate(pipeline).toArray()
+    // Get all time entries
+    const timeEntries = await db.collection('timeentries').find({}).sort({ createdAt: -1 }).toArray()
+    
+    // Get all users
+    const users = await db.collection('users').find({}).toArray()
+    const userMap = new Map(users.map(user => [user._id.toString(), user.username]))
+    
+    // Combine entries with usernames
+    const entries = timeEntries.map(entry => ({
+      ...entry,
+      username: userMap.get(entry.userId) || 'Unknown User'
+    }))
 
     return NextResponse.json({ entries })
   } catch (error) {

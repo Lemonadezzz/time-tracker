@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-import clientPromise from '@/lib/mongodb'
+import { getDatabase } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 
 async function getUserFromToken(request: NextRequest) {
@@ -22,11 +22,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db('timetracker')
-    const timeEntries = db.collection('timeentries')
-
-    const entries = await timeEntries
+    const db = await getDatabase()
+    
+    const entries = await db.collection('timeentries')
       .find({ userId: user.userId.toString() })
       .sort({ createdAt: -1 })
       .toArray()
@@ -34,7 +32,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ entries })
   } catch (error) {
     console.error('Time entries error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Database error', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
@@ -47,12 +48,10 @@ export async function POST(request: NextRequest) {
 
     const { date, timeIn, timeOut, duration } = await request.json()
 
-    const client = await clientPromise
-    const db = client.db('timetracker')
-    const timeEntries = db.collection('timeentries')
+    const db = await getDatabase()
 
     const now = new Date()
-    const result = await timeEntries.insertOne({
+    const result = await db.collection('timeentries').insertOne({
       userId: user.userId.toString(),
       date,
       timeIn,

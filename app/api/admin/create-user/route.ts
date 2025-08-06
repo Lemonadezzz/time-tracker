@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
+import bcrypt from 'bcryptjs'
 import { getDatabase } from '@/lib/mongodb'
-import { ObjectId } from 'mongodb'
 
 async function getUserFromToken(request: NextRequest) {
   const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -15,14 +15,19 @@ async function getUserFromToken(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromToken(request)
     if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { role } = await request.json()
+    const { username, password, role } = await request.json()
+
+    if (!username || !password) {
+      return NextResponse.json({ error: 'Username and password required' }, { status: 400 })
+    }
+
     if (!['admin', 'user'].includes(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
@@ -30,10 +35,21 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const db = await getDatabase()
     const users = db.collection('users')
 
-    await users.updateOne(
-      { _id: new ObjectId(params.id) },
-      { $set: { role, updatedAt: new Date() } }
-    )
+    const existingUser = await users.findOne({ username })
+    if (existingUser) {
+      return NextResponse.json({ error: 'Username already exists' }, { status: 400 })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12)
+    const now = new Date()
+
+    await users.insertOne({
+      username,
+      password: hashedPassword,
+      role,
+      createdAt: now,
+      updatedAt: now
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

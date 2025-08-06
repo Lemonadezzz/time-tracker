@@ -115,13 +115,13 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
             </div>
             <div className="flex justify-center">
               <Button 
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() => mounted && setTheme(theme === "dark" ? "light" : "dark")}
                 variant="ghost" 
                 size="sm" 
                 className="w-8 h-8 p-0" 
                 title="Toggle theme"
               >
-                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {mounted && theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
             </div>
             <Button onClick={onLogout} variant="outline" size="sm" className="w-full p-2 bg-transparent" title="Logout">
@@ -136,13 +136,13 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
                 <span className="truncate">{username}</span>
               </div>
               <Button 
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() => mounted && setTheme(theme === "dark" ? "light" : "dark")}
                 variant="ghost" 
                 size="sm" 
                 className="w-8 h-8 p-0" 
                 title="Toggle theme"
               >
-                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {mounted && theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
             </div>
             <Button onClick={onLogout} variant="outline" size="sm" className="w-full gap-2 bg-transparent">

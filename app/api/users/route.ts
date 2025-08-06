@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-import clientPromise from '@/lib/mongodb'
+import { getDatabase } from '@/lib/mongodb'
 
 async function getUserFromToken(request: NextRequest) {
   const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -21,17 +21,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db('timetracker')
-    const users = db.collection('users')
+    const db = await getDatabase()
 
-    const allUsers = await users
+    const allUsers = await db.collection('users')
       .find({}, { projection: { password: 0 } })
       .sort({ createdAt: -1 })
       .toArray()
 
     return NextResponse.json({ users: allUsers })
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Users API error:', error)
+    return NextResponse.json({ 
+      error: 'Database error', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
