@@ -50,21 +50,37 @@ export default function TimeTable({ entries }: TimeTableProps) {
     return entries.filter(entry => entry.date === date)
   }
 
+  // Filter entries within valid time range (6 AM - 10 PM)
+  const isValidTime = (timeStr: string) => {
+    const [hourMin, ampm] = timeStr.split(' ')
+    let [hour, minute] = hourMin.split(':').map(Number)
+    if (ampm === 'PM' && hour !== 12) hour += 12
+    if (ampm === 'AM' && hour === 12) hour = 0
+    const totalMinutes = hour * 60 + minute
+    return totalMinutes >= 360 && totalMinutes <= 1320 // 6 AM (360) to 10 PM (1320)
+  }
+
+  const validEntries = entries.filter(entry => {
+    // Only include entries with valid time in and time out within range
+    const validTimeIn = isValidTime(entry.timeIn)
+    const validTimeOut = entry.timeOut ? isValidTime(entry.timeOut) : false
+    // Forfeit sessions without proper time out or outside valid hours
+    return validTimeIn && validTimeOut
+  })
+
   // Merge fragmented entries by date
-  const mergedEntries = entries.reduce((acc, entry) => {
+  const mergedEntries = validEntries.reduce((acc, entry) => {
     const key = entry.date
     
     if (!acc[key]) {
       acc[key] = {
         ...entry,
         timeIns: [entry.timeIn],
-        timeOuts: entry.timeOut ? [entry.timeOut] : [],
-        totalDuration: entry.duration
+        timeOuts: entry.timeOut ? [entry.timeOut] : []
       }
     } else {
       acc[key].timeIns.push(entry.timeIn)
       if (entry.timeOut) acc[key].timeOuts.push(entry.timeOut)
-      acc[key].totalDuration += entry.duration
     }
     
     return acc
@@ -72,15 +88,40 @@ export default function TimeTable({ entries }: TimeTableProps) {
 
   // Convert to array and calculate earliest/latest times
   const consolidatedEntries = Object.values(mergedEntries).map((entry: any) => {
-    const timeIns = entry.timeIns.sort()
-    const timeOuts = entry.timeOuts.sort()
+    // Parse time strings to compare properly
+    const parseTimeForSort = (timeStr: string) => {
+      const [hourMin, ampm] = timeStr.split(' ')
+      let [hour, minute] = hourMin.split(':').map(Number)
+      if (ampm === 'PM' && hour !== 12) hour += 12
+      if (ampm === 'AM' && hour === 12) hour = 0
+      return hour * 60 + minute // Convert to minutes for sorting
+    }
+    
+    // Sort time ins and time outs properly
+    const sortedTimeIns = entry.timeIns.sort((a: string, b: string) => 
+      parseTimeForSort(a) - parseTimeForSort(b)
+    )
+    const sortedTimeOuts = entry.timeOuts.sort((a: string, b: string) => 
+      parseTimeForSort(a) - parseTimeForSort(b)
+    )
+    
+    const earliestTimeIn = sortedTimeIns[0]
+    const latestTimeOut = sortedTimeOuts.length > 0 ? sortedTimeOuts[sortedTimeOuts.length - 1] : null
+    
+    // Calculate actual duration between earliest and latest times
+    let actualDuration = 0
+    if (earliestTimeIn && latestTimeOut) {
+      const startMinutes = parseTimeForSort(earliestTimeIn)
+      const endMinutes = parseTimeForSort(latestTimeOut)
+      actualDuration = (endMinutes - startMinutes) * 60 // Convert to seconds
+    }
     
     return {
       _id: entry._id,
       date: entry.date,
-      timeIn: timeIns[0], // Earliest time in
-      timeOut: timeOuts.length > 0 ? timeOuts[timeOuts.length - 1] : null, // Latest time out
-      duration: entry.totalDuration
+      timeIn: earliestTimeIn,
+      timeOut: latestTimeOut,
+      duration: actualDuration
     }
   })
 
@@ -121,14 +162,14 @@ export default function TimeTable({ entries }: TimeTableProps) {
   }
 
   return (
-    <div className="border rounded-lg">
-      <Table>
+    <div className="border rounded-lg overflow-x-auto">
+      <Table className="min-w-full">
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
             <TableHead>Time In</TableHead>
             <TableHead>Time Out</TableHead>
-            <TableHead className="text-right">Duration</TableHead>
+            <TableHead className="text-right hidden md:table-cell">Duration</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -139,19 +180,21 @@ export default function TimeTable({ entries }: TimeTableProps) {
             
             return (
               <>
-                <TableRow key={entryId} className="cursor-pointer hover:bg-muted/50" onClick={() => toggleRow(entryId)}>
-                  <TableCell className="font-medium">
+                <TableRow key={entryId} className="md:cursor-pointer md:hover:bg-muted/50" onClick={() => window.innerWidth >= 768 && toggleRow(entryId)}>
+                  <TableCell className="font-medium min-w-[120px]">
                     <div className="flex items-center gap-2">
-                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      <span className="hidden md:inline">
+                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </span>
                       {formatDate(entry.date)}
                     </div>
                   </TableCell>
-                  <TableCell>{entry.timeIn}</TableCell>
-                  <TableCell>{entry.timeOut || "-"}</TableCell>
-                  <TableCell className="text-right font-mono">{formatDuration(entry.duration)}</TableCell>
+                  <TableCell className="min-w-[100px]">{entry.timeIn}</TableCell>
+                  <TableCell className="min-w-[100px]">{entry.timeOut || "-"}</TableCell>
+                  <TableCell className="text-right font-mono min-w-[80px] hidden md:table-cell">{formatDuration(entry.duration)}</TableCell>
                 </TableRow>
                 {isExpanded && (
-                  <TableRow>
+                  <TableRow className="hidden md:table-row">
                     <TableCell colSpan={4} className="p-0">
                       <div className="p-4 bg-muted/20">
                         <DayTimeline entries={dayEntries.map(e => ({...e, id: e._id || e.date + e.timeIn}))} />

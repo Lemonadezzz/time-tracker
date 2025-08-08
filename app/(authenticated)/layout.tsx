@@ -43,7 +43,7 @@ export default function AuthenticatedLayout({
   return (
     <div className="flex min-h-screen">
       <Sidebar username={username} onLogout={handleLogout} />
-      <div className="flex-1">{children}</div>
+      <div className="flex-1 md:ml-0">{children}</div>
     </div>
   )
 }

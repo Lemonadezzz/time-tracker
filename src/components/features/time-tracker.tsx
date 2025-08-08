@@ -28,15 +28,25 @@ export default function Component() {
   // Load data from backend on mount
   useEffect(() => {
     loadTimeEntries()
-    
-    const savedTracking = localStorage.getItem("isTracking")
-    const savedSessionStart = localStorage.getItem("currentSessionStart")
-
-    if (savedTracking === "true" && savedSessionStart) {
-      setIsTracking(true)
-      setCurrentSessionStart(new Date(savedSessionStart))
-    }
+    checkActiveSession()
   }, [])
+
+  const checkActiveSession = async () => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch('/api/session', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      
+      if (data.isTracking && data.sessionStart) {
+        setIsTracking(true)
+        setCurrentSessionStart(new Date(data.sessionStart))
+      }
+    } catch (error) {
+      console.error('Failed to check session:', error)
+    }
+  }
 
   const loadTimeEntries = async () => {
     try {
@@ -91,13 +101,28 @@ export default function Component() {
     })
   }
 
-  const handleTimeIn = () => {
-    const now = new Date()
-    setIsTracking(true)
-    setCurrentSessionStart(now)
-    setCurrentSessionTime(0)
-    localStorage.setItem("isTracking", "true")
-    localStorage.setItem("currentSessionStart", now.toISOString())
+  const handleTimeIn = async () => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch('/api/session', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'start' })
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        const now = new Date(data.sessionStart)
+        setIsTracking(true)
+        setCurrentSessionStart(now)
+        setCurrentSessionTime(0)
+      }
+    } catch (error) {
+      console.error('Failed to start session:', error)
+    }
   }
 
   const handleTimeOut = async () => {
@@ -128,11 +153,23 @@ export default function Component() {
       console.error('Failed to save time entry:', error)
     }
 
+    try {
+      const token = localStorage.getItem('authToken')
+      await fetch('/api/session', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'stop' })
+      })
+    } catch (error) {
+      console.error('Failed to stop session:', error)
+    }
+
     setIsTracking(false)
     setCurrentSessionStart(null)
     setCurrentSessionTime(0)
-    localStorage.removeItem("isTracking")
-    localStorage.removeItem("currentSessionStart")
   }
 
   const getTodayEntries = () => {
@@ -147,80 +184,83 @@ export default function Component() {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Timer Card */}
         <Card className="text-center">
-          <CardContent className="flex justify-between items-center p-6">
-            {/* Left Side: Current Time & Date, and "Started working at" text or "Ready to start tracking" */}
-            <div className="flex-1 text-left space-y-2">
-              <div className="text-2xl font-mono font-bold text-primary">
-                {currentTime.toLocaleTimeString("en-US", {
-                  hour12: true,
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {currentTime.toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </div>
-              {isTracking && currentSessionStart ? (
-                <div className="text-lg text-muted-foreground">
-                  Started working at{" "}
-                  <span className="font-semibold text-primary">
-                    {currentSessionStart.toLocaleTimeString("en-US", {
-                      hour12: true,
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+          <CardContent className="p-8 md:p-6">
+            {/* Mobile: Stack vertically, Desktop: Side by side */}
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-8 md:space-y-0">
+              {/* Left Side: Current Time & Date */}
+              <div className="flex-1 text-center md:text-left space-y-3 md:space-y-2">
+                <div className="text-3xl md:text-2xl font-mono font-bold text-primary">
+                  {currentTime.toLocaleTimeString("en-US", {
+                    hour12: true,
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
-              ) : (
-                <div className="text-lg text-muted-foreground">Ready to start tracking</div>
-              )}
-            </div>
-
-            {/* Right Side: Elapsed Timer and Button */}
-            <div className="flex items-center gap-8">
-              {/* Elapsed Timer */}
-              <div className="text-center">
-                <div className="text-6xl font-mono font-bold text-primary">
-                  {formatTimerDisplay(currentSessionTime)}
+                <div className="text-sm md:text-sm text-muted-foreground">
+                  {currentTime.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">{isTracking ? "Elapsed Time" : "Session Time"}</div>
-              </div>
-
-              {/* Timer Button */}
-              <div className="flex justify-center">
-                {!isTracking ? (
-                  <Button onClick={handleTimeIn} size="lg" className="gap-2 rounded-full w-16 h-16 p-0">
-                    <Play className="w-6 h-6" />
-                  </Button>
+                {isTracking && currentSessionStart ? (
+                  <div className="text-base md:text-lg text-muted-foreground">
+                    Started at{" "}
+                    <span className="font-semibold text-primary">
+                      {currentSessionStart.toLocaleTimeString("en-US", {
+                        hour12: true,
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
                 ) : (
-                  <Button
-                    onClick={handleTimeOut}
-                    size="lg"
-                    variant="destructive"
-                    className="gap-2 rounded-full w-16 h-16 p-0"
-                  >
-                    <Square className="w-6 h-6" />
-                  </Button>
+                  <div className="text-base md:text-lg text-muted-foreground">Ready to start tracking</div>
                 )}
+              </div>
+
+              {/* Right Side: Elapsed Timer and Button */}
+              <div className="flex flex-col md:flex-row items-center gap-8 md:gap-8">
+                {/* Elapsed Timer */}
+                <div className="text-center">
+                  <div className="text-6xl md:text-6xl font-mono font-bold text-primary">
+                    {formatTimerDisplay(currentSessionTime)}
+                  </div>
+                  <div className="text-sm md:text-sm text-muted-foreground mt-2 md:mt-1">{isTracking ? "Elapsed Time" : "Session Time"}</div>
+                </div>
+
+                {/* Timer Button */}
+                <div className="flex justify-center">
+                  {!isTracking ? (
+                    <Button onClick={handleTimeIn} size="lg" className="gap-2 rounded-full w-20 h-20 md:w-16 md:h-16 p-0">
+                      <Play className="w-8 h-8 md:w-6 md:h-6" />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleTimeOut}
+                      size="lg"
+                      variant="destructive"
+                      className="gap-2 rounded-full w-20 h-20 md:w-16 md:h-16 p-0"
+                    >
+                      <Square className="w-8 h-8 md:w-6 md:h-6" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Timeline */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        {/* Timeline - Hidden on mobile */}
+        <Card className="hidden md:block">
+          <CardHeader className="pb-4 md:pb-6">
+            <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
               <Calendar className="w-5 h-5" />
               Worked Today
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 md:px-6">
             <DayTimeline entries={todayEntries} />
           </CardContent>
         </Card>

@@ -127,25 +127,25 @@ export default function TeamPage() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+          <CardHeader className="pb-4 md:pb-6">
+            <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                Team Members
+                <span className="text-lg md:text-xl">Team Members</span>
               </div>
-              <Button onClick={() => setShowCreateForm(!showCreateForm)} size="sm">
+              <Button onClick={() => setShowCreateForm(!showCreateForm)} size="sm" className="self-start sm:self-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Member
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 md:px-6">
             {showCreateForm && (
               <div className="mb-6 p-4 border rounded-lg space-y-4">
                 <h3 className="font-medium">Create New Team Member</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="username">Username</Label>
                     <Input

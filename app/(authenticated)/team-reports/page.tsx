@@ -66,7 +66,63 @@ export default function TeamReportsPage() {
   }
 
   const getTotalTime = (entries: TeamTimeEntry[]) => {
-    return entries.reduce((total, entry) => total + entry.duration, 0)
+    // Apply same consolidation logic as in TeamTimeTable component
+    const isValidTime = (timeStr: string) => {
+      const [hourMin, ampm] = timeStr.split(' ')
+      let [hour, minute] = hourMin.split(':').map(Number)
+      if (ampm === 'PM' && hour !== 12) hour += 12
+      if (ampm === 'AM' && hour === 12) hour = 0
+      const totalMinutes = hour * 60 + minute
+      return totalMinutes >= 360 && totalMinutes <= 1320
+    }
+
+    const validEntries = entries.filter(entry => {
+      const validTimeIn = isValidTime(entry.timeIn)
+      const validTimeOut = entry.timeOut ? isValidTime(entry.timeOut) : false
+      return validTimeIn && validTimeOut
+    })
+
+    const mergedEntries = validEntries.reduce((acc, entry) => {
+      const key = `${entry.username}-${entry.date}`
+      if (!acc[key]) {
+        acc[key] = {
+          timeIns: [entry.timeIn],
+          timeOuts: entry.timeOut ? [entry.timeOut] : []
+        }
+      } else {
+        acc[key].timeIns.push(entry.timeIn)
+        if (entry.timeOut) acc[key].timeOuts.push(entry.timeOut)
+      }
+      return acc
+    }, {} as Record<string, any>)
+
+    const parseTimeForSort = (timeStr: string) => {
+      const [hourMin, ampm] = timeStr.split(' ')
+      let [hour, minute] = hourMin.split(':').map(Number)
+      if (ampm === 'PM' && hour !== 12) hour += 12
+      if (ampm === 'AM' && hour === 12) hour = 0
+      return hour * 60 + minute
+    }
+
+    return Object.values(mergedEntries).reduce((total, entry: any) => {
+      const sortedTimeIns = entry.timeIns.sort((a: string, b: string) => 
+        parseTimeForSort(a) - parseTimeForSort(b)
+      )
+      const sortedTimeOuts = entry.timeOuts.sort((a: string, b: string) => 
+        parseTimeForSort(a) - parseTimeForSort(b)
+      )
+      
+      const earliestTimeIn = sortedTimeIns[0]
+      const latestTimeOut = sortedTimeOuts.length > 0 ? sortedTimeOuts[sortedTimeOuts.length - 1] : null
+      
+      if (earliestTimeIn && latestTimeOut) {
+        const startMinutes = parseTimeForSort(earliestTimeIn)
+        const endMinutes = parseTimeForSort(latestTimeOut)
+        const duration = (endMinutes - startMinutes) * 60
+        return total + duration
+      }
+      return total
+    }, 0)
   }
 
   const filteredEntries = getFilteredEntries(activeTab)
@@ -74,15 +130,15 @@ export default function TeamReportsPage() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-4 md:pb-6">
+            <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
               <TrendingUp className="w-5 h-5" />
               Team Reports
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 md:px-6">
             {loading ? (
               <p>Loading team reports...</p>
             ) : (
@@ -94,13 +150,13 @@ export default function TeamReportsPage() {
                 </TabsList>
 
                 <div className="mt-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <h3 className="text-base md:text-lg font-semibold">
                       {activeTab === "today" && "Today's Team Hours"}
                       {activeTab === "week" && "This Week's Team Hours"}
                       {activeTab === "month" && "This Month's Team Hours"}
                     </h3>
-                    <Badge variant="secondary" className="text-lg px-3 py-1">
+                    <Badge variant="secondary" className="text-sm md:text-lg px-3 py-1 self-start sm:self-auto hidden md:inline-flex">
                       {formatDuration(totalTime)}
                     </Badge>
                   </div>
