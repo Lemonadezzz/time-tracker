@@ -1,6 +1,6 @@
 "use client"
 
-import TimeTrackerComponent from "../../../src/components/features/time-tracker"
+import TimeTrackerComponent from "@/components/time-tracker"
 
 export default function TimerPage() {
   return <TimeTrackerComponent />

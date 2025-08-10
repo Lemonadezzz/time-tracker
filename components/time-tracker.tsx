@@ -83,6 +83,18 @@ export default function Component() {
     return () => clearInterval(interval)
   }, [])
 
+  // Force timeline re-render every 30 minutes when tracking
+  useEffect(() => {
+    if (!isTracking) return
+    
+    const interval = setInterval(() => {
+      // Force component re-render to update timeline
+      setCurrentTime(new Date())
+    }, 30 * 60 * 1000) // 30 minutes
+
+    return () => clearInterval(interval)
+  }, [isTracking])
+
   // Formats duration for the main timer display (HH:MM:SS)
   const formatTimerDisplay = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -174,7 +186,25 @@ export default function Component() {
 
   const getTodayEntries = () => {
     const today = new Date().toLocaleDateString("en-CA")
-    return timeEntries.filter((entry) => entry.date === today)
+    const completedEntries = timeEntries.filter((entry) => entry.date === today)
+    
+    // If tracking and no completed entries, create a live entry for timeline
+    if (isTracking && currentSessionStart && completedEntries.length === 0) {
+      const liveEntry = {
+        _id: 'live-session',
+        date: today,
+        timeIn: currentSessionStart.toLocaleTimeString("en-US", {
+          hour12: true,
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        timeOut: null,
+        duration: currentSessionTime
+      }
+      return [liveEntry]
+    }
+    
+    return completedEntries
   }
 
   const todayEntries = getTodayEntries()
@@ -252,18 +282,23 @@ export default function Component() {
           </CardContent>
         </Card>
 
-        {/* Timeline - Hidden on mobile */}
-        <Card className="hidden md:block">
-          <CardHeader className="pb-4 md:pb-6">
-            <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-              <Calendar className="w-5 h-5" />
-              Worked Today
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 md:px-6">
-            <DayTimeline entries={todayEntries} />
-          </CardContent>
-        </Card>
+        {/* Timeline - Hidden on mobile, shown when tracking or has entries */}
+        {(todayEntries.length > 0 || isTracking) && (
+          <Card className="hidden md:block">
+            <CardHeader className="pb-4 md:pb-6">
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                <Calendar className="w-5 h-5" />
+                {isTracking && todayEntries.length === 1 && todayEntries[0]._id === 'live-session' 
+                  ? 'Currently Working' 
+                  : 'Worked Today'
+                }
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 md:px-6">
+              <DayTimeline entries={todayEntries.map(e => ({...e, id: e._id || e.date + e.timeIn}))} />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

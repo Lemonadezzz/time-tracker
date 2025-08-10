@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { Clock, ChevronDown, ChevronRight } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
-import DayTimeline from "@/src/components/features/day-timeline"
+import DayTimeline from "@/components/day-timeline"
 
 interface TeamTimeEntry {
   _id?: string

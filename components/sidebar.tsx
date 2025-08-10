@@ -81,16 +81,24 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <div className="md:hidden fixed top-4 right-4 z-50">
-        <Button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          variant="outline"
-          size="sm"
-          className="w-10 h-10 p-0 bg-background border shadow-md"
-        >
-          {mobileMenuOpen ? <X className="w-4 h-4" /> : <MoreVertical className="w-4 h-4" />}
-        </Button>
+      {/* Mobile Topbar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
+              <span className="text-background font-bold text-sm">TS</span>
+            </div>
+            <h1 className="text-lg font-semibold text-foreground">TimeSurgeon</h1>
+          </div>
+          <Button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            variant="ghost"
+            size="sm"
+            className="w-10 h-10 p-0"
+          >
+            {mobileMenuOpen ? <X className="w-4 h-4" /> : <MoreVertical className="w-4 h-4" />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Dropdown */}
