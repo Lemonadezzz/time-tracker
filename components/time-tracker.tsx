@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-import { Play, Square, Calendar } from "lucide-react"
+import { Play, Square, Calendar, Clock } from "lucide-react"
 import DayTimeline from "./day-timeline" // Import the new component
 import TimeTable from "@/components/time-table" // Import the TimeTable component
 import { formatDuration } from "@/lib/utils" // Import formatDuration from utils
@@ -24,6 +24,7 @@ export default function Component() {
   const [currentSessionTime, setCurrentSessionTime] = useState(0)
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [loading, setLoading] = useState(true)
 
   // Load data from backend on mount
   useEffect(() => {
@@ -45,6 +46,8 @@ export default function Component() {
       }
     } catch (error) {
       console.error('Failed to check session:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -254,15 +257,27 @@ export default function Component() {
               <div className="flex flex-col md:flex-row items-center gap-8 md:gap-8">
                 {/* Elapsed Timer */}
                 <div className="text-center">
-                  <div className="text-6xl md:text-6xl font-mono font-bold text-primary">
-                    {formatTimerDisplay(currentSessionTime)}
+                  {loading ? (
+                    <div className="text-6xl md:text-6xl font-mono font-bold text-muted-foreground">
+                      --:--:--
+                    </div>
+                  ) : (
+                    <div className="text-6xl md:text-6xl font-mono font-bold text-primary">
+                      {formatTimerDisplay(currentSessionTime)}
+                    </div>
+                  )}
+                  <div className="text-sm md:text-sm text-muted-foreground mt-2 md:mt-1">
+                    {loading ? "Loading..." : (isTracking ? "Elapsed Time" : "Session Time")}
                   </div>
-                  <div className="text-sm md:text-sm text-muted-foreground mt-2 md:mt-1">{isTracking ? "Elapsed Time" : "Session Time"}</div>
                 </div>
 
                 {/* Timer Button */}
                 <div className="flex justify-center">
-                  {!isTracking ? (
+                  {loading ? (
+                    <Button size="lg" className="gap-2 rounded-full w-20 h-20 md:w-16 md:h-16 p-0" disabled>
+                      <Clock className="w-8 h-8 md:w-6 md:h-6 animate-spin" />
+                    </Button>
+                  ) : !isTracking ? (
                     <Button onClick={handleTimeIn} size="lg" className="gap-2 rounded-full w-20 h-20 md:w-16 md:h-16 p-0">
                       <Play className="w-8 h-8 md:w-6 md:h-6" />
                     </Button>

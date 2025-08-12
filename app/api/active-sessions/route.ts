@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
       userId: session.userId?.toString()
     }))
 
-    console.log('Returning sessions:', serializedSessions.length, serializedSessions.map(s => s.username))
     return NextResponse.json({ activeSessions: serializedSessions })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
