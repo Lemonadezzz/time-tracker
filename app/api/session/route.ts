@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
+import { ObjectId } from 'mongodb'
 import { getDatabase } from '@/lib/mongodb'
 
 async function getUserFromToken(request: NextRequest) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     const sessions = db.collection('sessions')
 
     const activeSession = await sessions.findOne({ 
-      userId: user.userId,
+      userId: new ObjectId(user.userId),
       isActive: true 
     })
 
@@ -52,14 +53,14 @@ export async function POST(request: NextRequest) {
     if (action === 'start') {
       // End any existing active session
       await sessions.updateMany(
-        { userId: user.userId, isActive: true },
+        { userId: new ObjectId(user.userId), isActive: true },
         { $set: { isActive: false, endTime: new Date() } }
       )
 
       // Start new session
       const now = new Date()
       await sessions.insertOne({
-        userId: user.userId,
+        userId: new ObjectId(user.userId),
         startTime: now,
         isActive: true,
         createdAt: now
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     } else if (action === 'stop') {
       // End active session
       await sessions.updateMany(
-        { userId: user.userId, isActive: true },
+        { userId: new ObjectId(user.userId), isActive: true },
         { $set: { isActive: false, endTime: new Date() } }
       )
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-
+import { Skeleton } from "@/components/ui/skeleton"
 import { Clock, ChevronDown, ChevronRight } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
 import DayTimeline from "@/components/day-timeline"
@@ -127,23 +127,31 @@ export default function TimeTable({ entries }: TimeTableProps) {
 
   if (!mounted) {
     return (
-      <div className="border rounded-lg">
-        <Table>
+      <div className="border rounded-lg overflow-x-auto">
+        <Table className="min-w-full">
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
-              <TableHead>Time In</TableHead>
-              <TableHead>Time Out</TableHead>
-              <TableHead className="text-right">Duration</TableHead>
+              <TableHead className="hidden md:table-cell">Time In</TableHead>
+              <TableHead className="hidden md:table-cell">Time Out</TableHead>
+              <TableHead className="text-right hidden md:table-cell">Duration</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {entries.map((entry) => (
-              <TableRow key={entry._id || entry.date + entry.timeIn}>
-                <TableCell className="font-medium">{formatDate(entry.date)}</TableCell>
-                <TableCell>{entry.timeIn}</TableCell>
-                <TableCell>{entry.timeOut || "-"}</TableCell>
-                <TableCell className="text-right font-mono">{formatDuration(entry.duration)}</TableCell>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <TableRow key={index}>
+                <TableCell className="min-w-[120px]">
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell className="min-w-[100px] hidden md:table-cell">
+                  <Skeleton className="h-4 w-16" />
+                </TableCell>
+                <TableCell className="min-w-[100px] hidden md:table-cell">
+                  <Skeleton className="h-4 w-16" />
+                </TableCell>
+                <TableCell className="text-right min-w-[80px] hidden md:table-cell">
+                  <Skeleton className="h-4 w-12" />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

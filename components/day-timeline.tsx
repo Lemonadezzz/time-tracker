@@ -39,8 +39,10 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
     return `${displayHour}${ampm}`
   }
 
-  // Filter entries for the specific date and ensure they have timeOut
-  const completedEntries = entries.filter((entry) => entry.date === entryDate && entry.timeOut !== null)
+  // Filter entries for the specific date - include live sessions (timeOut === null)
+  const validEntries = entries.filter((entry) => entry.date === entryDate)
+  const completedEntries = validEntries.filter((entry) => entry.timeOut !== null)
+  const liveEntries = validEntries.filter((entry) => entry.timeOut === null)
 
   const parseTime = (timeString: string, dateString: string): Date => {
     // Combine date and time string to create a full Date object in local timezone
@@ -58,11 +60,11 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
     return new Date(year, month - 1, day, hour, minute, 0)
   }
 
-  if (completedEntries.length === 0) {
+  if (completedEntries.length === 0 && liveEntries.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-        <p>No completed time entries for this date to display on the timeline.</p>
+        <p>No time entries for this date to display on the timeline.</p>
       </div>
     )
   }
@@ -87,7 +89,7 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
           )
         })}
 
-        {/* Time Entry Highlights */}
+        {/* Completed Time Entry Highlights */}
         {completedEntries.map((entry) => {
           const timeInDate = parseTime(entry.timeIn, entry.date)
           let timeOutDate = entry.timeOut ? parseTime(entry.timeOut, entry.date) : null
@@ -128,6 +130,47 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
             >
               <span className="sr-only">
                 Time In: {entry.timeIn}, Time Out: {entry.timeOut}, Duration: {Math.floor(entry.duration / 60)} minutes
+              </span>
+            </div>
+          )
+        })}
+
+        {/* Live Session Highlights */}
+        {liveEntries.map((entry) => {
+          const timeInDate = parseTime(entry.timeIn, entry.date)
+          const currentTime = new Date()
+          
+          // Calculate start minutes from 6 AM
+          const startMinutesFromDayStart =
+            (timeInDate.getHours() - START_HOUR) * MINUTES_PER_HOUR + timeInDate.getMinutes()
+          
+          // Calculate current end minutes (live session)
+          const endMinutesFromDayStart =
+            (currentTime.getHours() - START_HOUR) * MINUTES_PER_HOUR + currentTime.getMinutes()
+
+          // Clip to timeline bounds
+          const clippedStartMinutes = Math.max(0, startMinutesFromDayStart)
+          const clippedEndMinutes = Math.min(TOTAL_MINUTES, endMinutesFromDayStart)
+
+          if (clippedStartMinutes >= clippedEndMinutes) return null
+
+          const leftPosition = clippedStartMinutes * PIXELS_PER_MINUTE
+          const width = (clippedEndMinutes - clippedStartMinutes) * PIXELS_PER_MINUTE
+
+          return (
+            <div
+              key={entry.id}
+              className="absolute bg-green-500/50 rounded-sm border border-green-600 animate-pulse"
+              style={{
+                left: `${leftPosition}px`,
+                width: `${width}px`,
+                height: `${BAR_HEIGHT}px`,
+                top: `${HOUR_MARKER_HEIGHT + 10}px`,
+              }}
+              title={`Currently tracking since ${entry.timeIn}`}
+            >
+              <span className="sr-only">
+                Currently tracking since {entry.timeIn}
               </span>
             </div>
           )
