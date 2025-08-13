@@ -30,6 +30,16 @@ export async function POST(request: NextRequest) {
       { expiresIn: '7d' }
     )
 
+    // Log successful login
+    const logs = db.collection('system_logs')
+    await logs.insertOne({
+      action: 'login',
+      details: `User logged in successfully`,
+      username: user.username,
+      timestamp: new Date(),
+      ip: request.headers.get('x-forwarded-for') || 'unknown'
+    })
+
     return NextResponse.json({ 
       success: true, 
       user: { username: user.username, role: user.role || 'user' },

@@ -66,6 +66,16 @@ export async function POST(request: NextRequest) {
         createdAt: now
       })
 
+      // Log timer start
+      const logs = db.collection('system_logs')
+      await logs.insertOne({
+        action: 'timer_start',
+        details: `Started time tracking session`,
+        username: user.username,
+        timestamp: new Date(),
+        ip: request.headers.get('x-forwarded-for') || 'unknown'
+      })
+
       return NextResponse.json({ success: true, sessionStart: now })
     } else if (action === 'stop') {
       // End active session
@@ -73,6 +83,16 @@ export async function POST(request: NextRequest) {
         { userId: new ObjectId(user.userId), isActive: true },
         { $set: { isActive: false, endTime: new Date() } }
       )
+
+      // Log timer stop
+      const logs = db.collection('system_logs')
+      await logs.insertOne({
+        action: 'timer_stop',
+        details: `Stopped time tracking session`,
+        username: user.username,
+        timestamp: new Date(),
+        ip: request.headers.get('x-forwarded-for') || 'unknown'
+      })
 
       return NextResponse.json({ success: true })
     }

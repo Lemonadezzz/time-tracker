@@ -25,12 +25,71 @@ export default function Component() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loading, setLoading] = useState(true)
+  const [location, setLocation] = useState<string>('')
 
   // Load data from backend on mount
   useEffect(() => {
     loadTimeEntries()
     checkActiveSession()
+    getUserLocation()
   }, [])
+
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords
+            
+            // Get location
+            const locationResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
+            const locationData = await locationResponse.json()
+            const city = locationData.city || locationData.locality || 'Unknown City'
+            const countryCode = locationData.countryCode || 'XX'
+            
+            // Get weather
+            const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=celsius`)
+            const weatherData = await weatherResponse.json()
+            const temp = Math.round(weatherData.current_weather.temperature)
+            const weatherCode = weatherData.current_weather.weathercode
+            const weatherEmoji = getWeatherEmoji(weatherCode)
+            
+            setLocation(`${weatherEmoji} ${temp}°C — ${city}, ${countryCode}`)
+          } catch (error) {
+            setLocation('Location unavailable')
+
+          }
+        },
+        () => {
+          setLocation('Location access denied')
+
+        }
+      )
+    } else {
+      setLocation('Geolocation not supported')
+
+    }
+  }
+
+  const getWeatherEmoji = (code: number) => {
+    if (code === 0) return '☀️'
+    if (code <= 3) return '⛅'
+    if (code <= 48) return '☁️'
+    if (code <= 67) return '🌧️'
+    if (code <= 77) return '🌨️'
+    if (code <= 82) return '🌦️'
+    return '⛈️'
+  }
+
+  const getWeatherDescription = (code: number) => {
+    if (code === 0) return 'clear'
+    if (code <= 3) return 'partly cloudy'
+    if (code <= 48) return 'cloudy'
+    if (code <= 67) return 'rainy'
+    if (code <= 77) return 'snowy'
+    if (code <= 82) return 'showers'
+    return 'stormy'
+  }
 
   const checkActiveSession = async () => {
     try {
@@ -212,24 +271,43 @@ export default function Component() {
 
   const todayEntries = getTodayEntries()
 
+  const getGreeting = () => {
+    const hour = currentTime.getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
+  }
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background p-3 md:p-6 pt-20 md:pt-6">
+      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
+        {/* Greeting */}
+        {!loading && (
+          <div className="text-center md:text-left px-1">
+            <h1 className="text-xl md:text-3xl font-bold text-foreground">
+              {getGreeting()}!
+            </h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
+              {location || 'Getting your location...'}
+            </p>
+          </div>
+        )}
+
         {/* Timer Card */}
         <Card className="text-center">
-          <CardContent className="p-8 md:p-6">
+          <CardContent className="p-4 md:p-6">
             {/* Mobile: Stack vertically, Desktop: Side by side */}
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-8 md:space-y-0">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-6 md:space-y-0">
               {/* Left Side: Current Time & Date */}
-              <div className="flex-1 text-center md:text-left space-y-3 md:space-y-2">
-                <div className="text-3xl md:text-2xl font-mono font-bold text-primary">
+              <div className="flex-1 text-center md:text-left space-y-2 md:space-y-2">
+                <div className="text-2xl md:text-2xl font-mono font-bold text-primary">
                   {currentTime.toLocaleTimeString("en-US", {
                     hour12: true,
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </div>
-                <div className="text-sm md:text-sm text-muted-foreground">
+                <div className="text-xs md:text-sm text-muted-foreground">
                   {currentTime.toLocaleDateString("en-US", {
                     weekday: "long",
                     year: "numeric",
@@ -238,7 +316,7 @@ export default function Component() {
                   })}
                 </div>
                 {isTracking && currentSessionStart ? (
-                  <div className="text-base md:text-lg text-muted-foreground">
+                  <div className="text-sm md:text-lg text-muted-foreground">
                     Started at{" "}
                     <span className="font-semibold text-primary">
                       {currentSessionStart.toLocaleTimeString("en-US", {
@@ -249,24 +327,24 @@ export default function Component() {
                     </span>
                   </div>
                 ) : (
-                  <div className="text-base md:text-lg text-muted-foreground">Ready to start tracking</div>
+                  <div className="text-sm md:text-lg text-muted-foreground">Ready to start tracking</div>
                 )}
               </div>
 
               {/* Right Side: Elapsed Timer and Button */}
-              <div className="flex flex-col md:flex-row items-center gap-8 md:gap-8">
+              <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
                 {/* Elapsed Timer */}
                 <div className="text-center">
                   {loading ? (
-                    <div className="text-6xl md:text-6xl font-mono font-bold text-muted-foreground">
+                    <div className="text-4xl md:text-6xl font-mono font-bold text-muted-foreground">
                       --:--:--
                     </div>
                   ) : (
-                    <div className="text-6xl md:text-6xl font-mono font-bold text-primary">
+                    <div className="text-4xl md:text-6xl font-mono font-bold text-primary">
                       {formatTimerDisplay(currentSessionTime)}
                     </div>
                   )}
-                  <div className="text-sm md:text-sm text-muted-foreground mt-2 md:mt-1">
+                  <div className="text-xs md:text-sm text-muted-foreground mt-1 md:mt-1">
                     {loading ? "Loading..." : (isTracking ? "Elapsed Time" : "Session Time")}
                   </div>
                 </div>
@@ -274,21 +352,21 @@ export default function Component() {
                 {/* Timer Button */}
                 <div className="flex justify-center">
                   {loading ? (
-                    <Button size="lg" className="gap-2 rounded-full w-20 h-20 md:w-16 md:h-16 p-0" disabled>
-                      <Clock className="w-8 h-8 md:w-6 md:h-6 animate-spin" />
+                    <Button size="lg" className="gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0" disabled>
+                      <Clock className="w-6 h-6 md:w-6 md:h-6 animate-spin" />
                     </Button>
                   ) : !isTracking ? (
-                    <Button onClick={handleTimeIn} size="lg" className="gap-2 rounded-full w-20 h-20 md:w-16 md:h-16 p-0">
-                      <Play className="w-8 h-8 md:w-6 md:h-6" />
+                    <Button onClick={handleTimeIn} size="lg" className="gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0">
+                      <Play className="w-6 h-6 md:w-6 md:h-6" />
                     </Button>
                   ) : (
                     <Button
                       onClick={handleTimeOut}
                       size="lg"
                       variant="destructive"
-                      className="gap-2 rounded-full w-20 h-20 md:w-16 md:h-16 p-0"
+                      className="gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0"
                     >
-                      <Square className="w-8 h-8 md:w-6 md:h-6" />
+                      <Square className="w-6 h-6 md:w-6 md:h-6" />
                     </Button>
                   )}
                 </div>
@@ -300,16 +378,16 @@ export default function Component() {
         {/* Timeline - Hidden on mobile, shown when tracking or has entries */}
         {(todayEntries.length > 0 || isTracking) && (
           <Card className="hidden md:block">
-            <CardHeader className="pb-4 md:pb-6">
-              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-                <Calendar className="w-5 h-5" />
+            <CardHeader className="pb-3 md:pb-6">
+              <CardTitle className="flex items-center gap-2 text-base md:text-xl">
+                <Calendar className="w-4 h-4 md:w-5 md:h-5" />
                 {isTracking && todayEntries.length === 1 && todayEntries[0]._id === 'live-session' 
                   ? 'Currently Working' 
                   : 'Worked Today'
                 }
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-4 md:px-6">
+            <CardContent className="px-3 md:px-6">
               <DayTimeline entries={todayEntries.map(e => ({...e, id: e._id || e.date + e.timeIn}))} />
             </CardContent>
           </Card>
