@@ -52,9 +52,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-3 md:p-6 pt-20 md:pt-6">
-      <div className="max-w-6xl mx-auto space-y-3 md:space-y-6">
-        <div className="flex items-center gap-2 px-1">
+    <div className="min-h-screen bg-background p-3 md:p-6 md:pt-6">
+      <div className="max-w-6xl md:mx-auto space-y-3 md:space-y-6">
+        <div className="flex items-center gap-2">
           <BarChart3 className="w-5 h-5 md:w-6 md:h-6" />
           <h1 className="text-xl md:text-2xl font-bold">Dashboard</h1>
         </div>
@@ -191,11 +191,11 @@ function ActivityHeatmap() {
     return weeks
   }
 
-  const getIntensityClass = (hours: number) => {
-    if (hours === 0) return 'bg-gray-100 dark:bg-gray-800'
-    if (hours < 2) return 'bg-green-200 dark:bg-green-900'
-    if (hours < 4) return 'bg-green-300 dark:bg-green-700'
-    if (hours < 6) return 'bg-green-400 dark:bg-green-600'
+  const getIntensityClass = (users: number) => {
+    if (users === 0) return 'bg-gray-100 dark:bg-gray-800'
+    if (users === 1) return 'bg-green-200 dark:bg-green-900'
+    if (users === 2) return 'bg-green-300 dark:bg-green-700'
+    if (users === 3) return 'bg-green-400 dark:bg-green-600'
     return 'bg-green-500 dark:bg-green-500'
   }
 
@@ -246,8 +246,8 @@ function ActivityHeatmap() {
                 {week.map((day, dayIndex) => (
                   <div
                     key={`${weekIndex}-${dayIndex}`}
-                    className={`w-4 h-4 md:w-4 md:h-4 rounded-sm ${getIntensityClass(day.hours)} cursor-pointer hover:ring-1 hover:ring-primary/50 transition-all`}
-                    title={`${day.date.toDateString()}: ${day.hours.toFixed(1)}h (${day.users} users)`}
+                    className={`w-4 h-4 md:w-4 md:h-4 rounded-sm ${getIntensityClass(day.users)} cursor-pointer hover:ring-1 hover:ring-primary/50 transition-all`}
+                    title={`${day.date.toDateString()}: ${day.users} users, ${day.hours.toFixed(1)}h total`}
                   ></div>
                 ))}
               </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Fragment } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Clock, ChevronDown, ChevronRight } from "lucide-react"
@@ -22,11 +22,6 @@ interface TeamTimeTableProps {
 
 export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -127,48 +122,7 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
     }
   })
 
-  if (!mounted) {
-    return (
-      <div className="border rounded-lg overflow-x-auto">
-        <Table className="min-w-full">
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="hidden md:table-cell">Time In</TableHead>
-              <TableHead className="hidden md:table-cell">Time Out</TableHead>
-              <TableHead className="text-right md:hidden">Duration</TableHead>
-              <TableHead className="text-right hidden md:table-cell">Duration</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <TableRow key={index}>
-                <TableCell className="min-w-[100px]">
-                  <Skeleton className="h-4 w-16" />
-                </TableCell>
-                <TableCell className="min-w-[120px]">
-                  <Skeleton className="h-4 w-20" />
-                </TableCell>
-                <TableCell className="min-w-[100px] hidden md:table-cell">
-                  <Skeleton className="h-4 w-16" />
-                </TableCell>
-                <TableCell className="min-w-[100px] hidden md:table-cell">
-                  <Skeleton className="h-4 w-16" />
-                </TableCell>
-                <TableCell className="text-right min-w-[80px] md:hidden">
-                  <Skeleton className="h-4 w-12" />
-                </TableCell>
-                <TableCell className="text-right min-w-[80px] hidden md:table-cell">
-                  <Skeleton className="h-4 w-12" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    )
-  }
+
 
   if (consolidatedEntries.length === 0) {
     return (
@@ -186,9 +140,8 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
           <TableRow>
             <TableHead>User</TableHead>
             <TableHead>Date</TableHead>
-            <TableHead className="hidden md:table-cell">Time In</TableHead>
-            <TableHead className="hidden md:table-cell">Time Out</TableHead>
-            <TableHead className="text-right md:hidden">Duration</TableHead>
+            <TableHead>Time In</TableHead>
+            <TableHead>Time Out</TableHead>
             <TableHead className="text-right hidden md:table-cell">Duration</TableHead>
           </TableRow>
         </TableHeader>
@@ -199,8 +152,8 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
             const userDayEntries = getEntriesForUserAndDate(entry.username, entry.date)
             
             return (
-              <>
-                <TableRow key={entryId} className="md:cursor-pointer md:hover:bg-muted/50" onClick={() => window.innerWidth >= 768 && toggleRow(entryId)}>
+              <Fragment key={entryId}>
+                <TableRow className="md:cursor-pointer md:hover:bg-muted/50" onClick={() => window.innerWidth >= 768 && toggleRow(entryId)}>
                   <TableCell className="font-medium min-w-[100px]">
                     <div className="flex items-center gap-2">
                       <span className="hidden md:inline">
@@ -209,10 +162,9 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
                       {entry.username}
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[120px]">{formatDate(entry.date)}</TableCell>
-                  <TableCell className="min-w-[100px] hidden md:table-cell">{entry.timeIn}</TableCell>
-                  <TableCell className="min-w-[100px] hidden md:table-cell">{entry.timeOut || "-"}</TableCell>
-                  <TableCell className="text-right font-mono min-w-[80px] md:hidden">{formatDuration(entry.duration)}</TableCell>
+                  <TableCell className="min-w-[120px]"><span suppressHydrationWarning>{formatDate(entry.date)}</span></TableCell>
+                  <TableCell className="min-w-[100px]">{entry.timeIn}</TableCell>
+                  <TableCell className="min-w-[100px]">{entry.timeOut || "-"}</TableCell>
                   <TableCell className="text-right font-mono min-w-[80px] hidden md:table-cell">{formatDuration(entry.duration)}</TableCell>
                 </TableRow>
                 {isExpanded && (
@@ -224,7 +176,7 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </Fragment>
             )
           })}
         </TableBody>

@@ -15,7 +15,7 @@ interface SidebarProps {
 
 const allNavigation = [
   { name: "Timer", href: "/timer", icon: Timer, roles: ['admin', 'user', 'developer'] },
-  { name: "Time Reports", href: "/logs", icon: FileText, roles: ['admin', 'user', 'developer'] },
+  { name: "My Timesheets", href: "/user-time-reports", icon: FileText, roles: ['admin', 'user', 'developer'] },
   { name: "Dashboard", href: "/dashboard", icon: BarChart3, roles: ['admin', 'developer'] },
   { name: "Team", href: "/team", icon: Users, roles: ['admin', 'developer'] },
   { name: "Team Reports", href: "/team-reports", icon: TrendingUp, roles: ['admin', 'developer'] },

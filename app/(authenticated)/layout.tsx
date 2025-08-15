@@ -41,7 +41,7 @@ export default function AuthenticatedLayout({
   if (!username) return null
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen" suppressHydrationWarning>
       <Sidebar username={username} onLogout={handleLogout} />
       <div className="flex-1 md:ml-0 pt-16 md:pt-0">{children}</div>
     </div>

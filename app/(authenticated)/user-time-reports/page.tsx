@@ -2,38 +2,30 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Users, ChevronLeft, ChevronRight, Filter, Clock } from "lucide-react"
-import TeamTimeTable from "@/components/team-time-table"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar, ChevronLeft, ChevronRight, Filter, Clock } from "lucide-react"
+import TimeTable from "@/components/time-table"
 import { formatDuration } from "@/lib/utils"
 import { timeEntriesService } from "@/lib/timeEntries"
 
-interface TeamTimeEntry {
+interface TimeEntry {
   _id?: string
-  username: string
   date: string
   timeIn: string
   timeOut: string | null
   duration: number
 }
 
-interface User {
-  _id: string
-  username: string
-}
-
-export default function TeamReportsPage() {
-  const [timeEntries, setTimeEntries] = useState<TeamTimeEntry[]>([])
-  const [users, setUsers] = useState<User[]>([])
+export default function UserTimeReportsPage() {
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [entriesPerPage, setEntriesPerPage] = useState(30)
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest')
-  const [selectedUser, setSelectedUser] = useState<string>('all')
 
   // Default to current month
   const [dateRange, setDateRange] = useState(() => {
@@ -45,10 +37,6 @@ export default function TeamReportsPage() {
       end: endOfMonth.toLocaleDateString("en-CA")
     }
   })
-
-  useEffect(() => {
-    loadUsers()
-  }, [])
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -69,44 +57,24 @@ export default function TeamReportsPage() {
     }, 300) // Debounce date changes
     
     return () => clearTimeout(timeoutId)
-  }, [dateRange, selectedUser])
+  }, [dateRange])
   
   useEffect(() => {
     loadTimeEntries()
   }, [currentPage, entriesPerPage, sortOrder])
 
-  const loadUsers = async () => {
-    try {
-      const token = localStorage.getItem('authToken')
-      const response = await fetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const data = await response.json()
-      setUsers(data.users || [])
-    } catch (error) {
-      console.error('Failed to load users:', error)
-    }
-  }
-
   const loadTimeEntries = async () => {
     try {
       setLoading(true)
-      const entries = await timeEntriesService.getAllEntries() // Get all users' entries
+      const entries = await timeEntriesService.getEntries()
       
-      // Filter entries by date range and user
-      let filteredEntries = entries.filter((entry: TeamTimeEntry) => 
+      // Filter entries by date range
+      const filteredEntries = entries.filter(entry => 
         entry.date >= dateRange.start && entry.date <= dateRange.end
       )
       
-      // Filter by selected user if not 'all'
-      if (selectedUser !== 'all') {
-        filteredEntries = filteredEntries.filter((entry: TeamTimeEntry) => 
-          entry.username === selectedUser
-        )
-      }
-      
-      // Consolidate entries by user and date
-      const consolidatedEntries = consolidateEntriesByUserAndDate(filteredEntries)
+      // Consolidate entries by date (same logic as TimeTable)
+      const consolidatedEntries = consolidateEntriesByDate(filteredEntries)
       
       // Sort by date based on selected order
       const sortedEntries = consolidatedEntries.sort((a, b) => {
@@ -115,7 +83,7 @@ export default function TeamReportsPage() {
         return sortOrder === 'latest' ? dateB - dateA : dateA - dateB
       })
       
-      // Calculate pagination on consolidated entries
+      // Calculate pagination
       const totalEntries = sortedEntries.length
       const totalPagesCalc = Math.ceil(totalEntries / entriesPerPage)
       
@@ -133,6 +101,8 @@ export default function TeamReportsPage() {
       const endIndex = Math.min(startIndex + entriesPerPage, totalEntries)
       const pageEntries = sortedEntries.slice(startIndex, endIndex)
       
+
+      
       setTimeEntries(pageEntries)
     } catch (error) {
       console.error('Failed to load time entries:', error)
@@ -141,7 +111,18 @@ export default function TeamReportsPage() {
     }
   }
 
-  const consolidateEntriesByUserAndDate = (entries: TeamTimeEntry[]) => {
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handlePageSizeChange = (size: string) => {
+    setEntriesPerPage(Number(size))
+    setCurrentPage(1) // Reset to first page
+  }
+
+
+
+  const consolidateEntriesByDate = (entries: TimeEntry[]) => {
     const isValidTime = (timeStr: string) => {
       const [hourMin, ampm] = timeStr.split(' ')
       let [hour, minute] = hourMin.split(':').map(Number)
@@ -158,7 +139,7 @@ export default function TeamReportsPage() {
     })
 
     const mergedEntries = validEntries.reduce((acc, entry) => {
-      const key = `${entry.username}-${entry.date}`
+      const key = entry.date
       if (!acc[key]) {
         acc[key] = {
           ...entry,
@@ -200,22 +181,12 @@ export default function TeamReportsPage() {
       
       return {
         _id: entry._id,
-        username: entry.username,
         date: entry.date,
         timeIn: earliestTimeIn,
         timeOut: latestTimeOut,
         duration: actualDuration
       }
     })
-  }
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
-
-  const handlePageSizeChange = (size: string) => {
-    setEntriesPerPage(Number(size))
-    setCurrentPage(1) // Reset to first page
   }
 
   const getTotalTime = () => {
@@ -231,8 +202,8 @@ export default function TeamReportsPage() {
           <CardHeader className="pb-3 md:pb-6 flex-shrink-0">
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 md:w-5 md:h-5" />
-                <span className="text-base md:text-xl">Team Reports</span>
+                <Calendar className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="text-base md:text-xl">My Timesheets</span>
               </div>
               <Badge variant="secondary" className="hidden md:inline-flex">
                 {formatDuration(totalTime)}
@@ -241,26 +212,11 @@ export default function TeamReportsPage() {
           </CardHeader>
           <CardContent className="px-3 md:px-6 flex-1 flex flex-col">
             <div className="flex-1 flex flex-col space-y-3">
-              {/* Filters */}
+              {/* Date Range Filter */}
               <div className="flex flex-col md:flex-row items-center gap-3 p-3 bg-muted/20 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4" />
-                  <span className="text-sm font-medium">Filters:</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Select value={selectedUser} onValueChange={setSelectedUser}>
-                    <SelectTrigger className="w-32 h-8">
-                      <SelectValue placeholder="All Users" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Users</SelectItem>
-                      {users.map((user) => (
-                        <SelectItem key={user._id} value={user.username}>
-                          {user.username}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <span className="text-sm font-medium">Filter by date:</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Input
@@ -289,6 +245,15 @@ export default function TeamReportsPage() {
                       <SelectItem value="oldest">Oldest</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setDateRange({
+                      start: new Date().toLocaleDateString("en-CA"),
+                      end: new Date().toLocaleDateString("en-CA")
+                    })
+                    setCurrentPage(1)
+                  }}>
+                    Today
+                  </Button>
                 </div>
               </div>
               
@@ -296,10 +261,10 @@ export default function TeamReportsPage() {
                 {loading ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Clock className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                    <p>Loading team entries...</p>
+                    <p>Loading time entries...</p>
                   </div>
                 ) : (
-                  <TeamTimeTable entries={timeEntries} />
+                  <TimeTable entries={timeEntries} />
                 )}
               </div>
               

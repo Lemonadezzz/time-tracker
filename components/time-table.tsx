@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Fragment } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Clock, ChevronDown, ChevronRight } from "lucide-react"
@@ -21,11 +21,6 @@ interface TimeTableProps {
 
 export default function TimeTable({ entries }: TimeTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -125,40 +120,7 @@ export default function TimeTable({ entries }: TimeTableProps) {
     }
   })
 
-  if (!mounted) {
-    return (
-      <div className="border rounded-lg overflow-x-auto">
-        <Table className="min-w-full">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead className="hidden md:table-cell">Time In</TableHead>
-              <TableHead className="hidden md:table-cell">Time Out</TableHead>
-              <TableHead className="text-right hidden md:table-cell">Duration</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <TableRow key={index}>
-                <TableCell className="min-w-[120px]">
-                  <Skeleton className="h-4 w-20" />
-                </TableCell>
-                <TableCell className="min-w-[100px] hidden md:table-cell">
-                  <Skeleton className="h-4 w-16" />
-                </TableCell>
-                <TableCell className="min-w-[100px] hidden md:table-cell">
-                  <Skeleton className="h-4 w-16" />
-                </TableCell>
-                <TableCell className="text-right min-w-[80px] hidden md:table-cell">
-                  <Skeleton className="h-4 w-12" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    )
-  }
+
 
   if (consolidatedEntries.length === 0) {
     return (
@@ -187,14 +149,14 @@ export default function TimeTable({ entries }: TimeTableProps) {
             const dayEntries = getEntriesForDate(entry.date)
             
             return (
-              <>
-                <TableRow key={entryId} className="md:cursor-pointer md:hover:bg-muted/50" onClick={() => window.innerWidth >= 768 && toggleRow(entryId)}>
+              <Fragment key={entryId}>
+                <TableRow className="md:cursor-pointer md:hover:bg-muted/50" onClick={() => window.innerWidth >= 768 && toggleRow(entryId)}>
                   <TableCell className="font-medium min-w-[120px]">
                     <div className="flex items-center gap-2">
                       <span className="hidden md:inline">
                         {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </span>
-                      {formatDate(entry.date)}
+                      <span suppressHydrationWarning>{formatDate(entry.date)}</span>
                     </div>
                   </TableCell>
                   <TableCell className="min-w-[100px]">{entry.timeIn}</TableCell>
@@ -210,7 +172,7 @@ export default function TimeTable({ entries }: TimeTableProps) {
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </Fragment>
             )
           })}
         </TableBody>

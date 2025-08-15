@@ -24,5 +24,17 @@ export const timeEntriesService = {
       body: JSON.stringify(entry)
     })
     return response.json()
+  },
+
+  async getAllEntries(): Promise<any[]> {
+    const token = localStorage.getItem('authToken')
+    const response = await fetch('/api/team-time-entries', {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    const data = await response.json()
+    return data.entries || []
   }
 }

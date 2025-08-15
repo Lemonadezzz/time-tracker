@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
+import { ObjectId } from 'mongodb'
 import { getDatabase } from '@/lib/mongodb'
 
 async function getUserFromToken(request: NextRequest) {
@@ -24,35 +25,40 @@ export async function GET(request: NextRequest) {
     const db = await getDatabase()
     const timeEntries = db.collection('timeentries')
 
-    // Get last 365 days of data
-    const oneYearAgo = new Date()
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-
-    const activityData = await timeEntries.aggregate([
+    // Get all time entries with user information
+    const entries = await timeEntries.aggregate([
       {
-        $match: {
-          date: { $gte: oneYearAgo.toISOString().split('T')[0] }
+        $addFields: {
+          userObjectId: { $toObjectId: '$userId' }
         }
       },
       {
-        $group: {
-          _id: '$date',
-          totalDuration: { $sum: { $ifNull: ['$duration', 0] } },
-          uniqueUsers: { $addToSet: { $ifNull: ['$username', 'unknown'] } },
-          docCount: { $sum: 1 }
+        $lookup: {
+          from: 'users',
+          localField: 'userObjectId',
+          foreignField: '_id',
+          as: 'user'
         }
+      },
+      {
+        $unwind: '$user'
       },
       {
         $project: {
-          date: '$_id',
-          totalHours: { $divide: ['$totalDuration', 3600] },
-          activeUsers: { $size: '$uniqueUsers' },
+          date: 1,
+          timeIn: 1,
+          timeOut: 1,
+          duration: 1,
+          username: '$user.username',
+          createdAt: 1
         }
       },
-      { $sort: { date: -1 } }
+      {
+        $sort: { createdAt: -1 }
+      }
     ]).toArray()
 
-    return NextResponse.json({ activityData })
+    return NextResponse.json({ entries })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
