@@ -127,10 +127,8 @@ export default function TeamReportsPage() {
 
   const exportToExcel = () => {
     const exportData = timeEntries.map(entry => {
-      // Detect if duration is in seconds (>1440) or minutes
-      const durationInMinutes = entry.duration > 1440 ? Math.floor(entry.duration / 60) : entry.duration
-      const hours = Math.floor(durationInMinutes / 60)
-      const minutes = durationInMinutes % 60
+      const hours = Math.floor(entry.duration / 3600)
+      const minutes = Math.floor((entry.duration % 3600) / 60)
       const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
       
       return {
