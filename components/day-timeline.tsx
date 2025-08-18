@@ -151,10 +151,20 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
                 height: `${BAR_HEIGHT}px`, // Fixed height for the bar
                 top: `${HOUR_MARKER_HEIGHT + 10}px`, // Position below hour labels with some padding
               }}
-              title={`Time In: ${formatTime(entry.timeIn)}, Time Out: ${formatTime(entry.timeOut)}, Duration: ${Math.floor(entry.duration / 60)}h ${entry.duration % 60}m`}
+              title={`Time In: ${formatTime(entry.timeIn)}, Time Out: ${formatTime(entry.timeOut)}, Duration: ${(() => {
+                const durationInMinutes = entry.duration > 1440 ? Math.floor(entry.duration / 60) : entry.duration
+                const hours = Math.floor(durationInMinutes / 60)
+                const minutes = durationInMinutes % 60
+                return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+              })()}`}
             >
               <span className="sr-only">
-                Time In: {formatTime(entry.timeIn)}, Time Out: {formatTime(entry.timeOut)}, Duration: {Math.floor(entry.duration / 60)}h {entry.duration % 60}m
+                Time In: {formatTime(entry.timeIn)}, Time Out: {formatTime(entry.timeOut)}, Duration: {(() => {
+                  const durationInMinutes = entry.duration > 1440 ? Math.floor(entry.duration / 60) : entry.duration
+                  const hours = Math.floor(durationInMinutes / 60)
+                  const minutes = durationInMinutes % 60
+                  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+                })()} 
               </span>
             </div>
           )

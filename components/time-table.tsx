@@ -113,7 +113,7 @@ export default function TimeTable({ entries }: TimeTableProps) {
                   </TableCell>
                   <TableCell className="min-w-[100px]">{formatTime(entry.timeIn)}</TableCell>
                   <TableCell className="min-w-[100px]">{entry.timeOut ? formatTime(entry.timeOut) : "-"}</TableCell>
-                  <TableCell className="text-right font-mono min-w-[80px] hidden md:table-cell">{formatDuration(entry.duration * 60)}</TableCell>
+                  <TableCell className="text-right font-mono min-w-[80px] hidden md:table-cell">{formatDuration(entry.duration > 1440 ? entry.duration : entry.duration * 60)}</TableCell>
                 </TableRow>
                 {isExpanded && (
                   <TableRow className="hidden md:table-row">
