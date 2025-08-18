@@ -26,6 +26,7 @@ export default function Component() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [location, setLocation] = useState<string>('')
+  const [buttonCooldown, setButtonCooldown] = useState(false)
 
   // Load data from backend on mount
   useEffect(() => {
@@ -176,6 +177,11 @@ export default function Component() {
   }
 
   const handleTimeIn = async () => {
+    if (buttonCooldown) return
+    
+    setButtonCooldown(true)
+    setTimeout(() => setButtonCooldown(false), 3000)
+    
     try {
       const token = localStorage.getItem('authToken')
       const response = await fetch('/api/session', {
@@ -200,7 +206,10 @@ export default function Component() {
   }
 
   const handleTimeOut = async () => {
-    if (!currentSessionStart) return
+    if (!currentSessionStart || buttonCooldown) return
+    
+    setButtonCooldown(true)
+    setTimeout(() => setButtonCooldown(false), 3000)
 
     const now = new Date()
     const duration = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
@@ -356,7 +365,12 @@ export default function Component() {
                       <Clock className="w-6 h-6 md:w-6 md:h-6 animate-spin" />
                     </Button>
                   ) : !isTracking ? (
-                    <Button onClick={handleTimeIn} size="lg" className="gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0">
+                    <Button 
+                      onClick={handleTimeIn} 
+                      size="lg" 
+                      className={`gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0 cursor-pointer ${buttonCooldown ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={buttonCooldown}
+                    >
                       <Play className="w-6 h-6 md:w-6 md:h-6" />
                     </Button>
                   ) : (
@@ -364,7 +378,8 @@ export default function Component() {
                       onClick={handleTimeOut}
                       size="lg"
                       variant="destructive"
-                      className="gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0"
+                      className={`gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0 cursor-pointer ${buttonCooldown ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={buttonCooldown}
                     >
                       <Square className="w-6 h-6 md:w-6 md:h-6" />
                     </Button>
