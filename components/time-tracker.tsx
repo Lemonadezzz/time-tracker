@@ -259,8 +259,8 @@ export default function Component() {
     const today = new Date().toLocaleDateString("en-CA")
     const completedEntries = timeEntries.filter((entry) => entry.date === today)
     
-    // If tracking and no completed entries, create a live entry for timeline
-    if (isTracking && currentSessionStart && completedEntries.length === 0) {
+    // If currently tracking, add live session to the list
+    if (isTracking && currentSessionStart) {
       const liveEntry = {
         _id: 'live-session',
         date: today,
@@ -272,7 +272,7 @@ export default function Component() {
         timeOut: null,
         duration: currentSessionTime
       }
-      return [liveEntry]
+      return [...completedEntries, liveEntry]
     }
     
     return completedEntries
