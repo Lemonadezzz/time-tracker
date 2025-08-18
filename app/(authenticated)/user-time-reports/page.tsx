@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, ChevronLeft, ChevronRight, Filter, Clock, Download } from "lucide-react"
 import TimeTable from "@/components/time-table"
 import { formatDuration } from "@/lib/utils"
-import * as XLSX from 'xlsx'
+import { exportTimeEntriesToExcel } from "@/lib/exportUtils"
 import { timeEntriesService } from "@/lib/timeEntries"
 
 interface TimeEntry {
@@ -102,23 +102,7 @@ export default function UserTimeReportsPage() {
   }
 
   const exportToExcel = () => {
-    const exportData = timeEntries.map(entry => {
-      const hours = Math.floor(entry.duration / 3600)
-      const minutes = Math.floor((entry.duration % 3600) / 60)
-      const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-      
-      return {
-        Date: entry.date,
-        'Time In': entry.timeIn,
-        'Time Out': entry.timeOut || '-',
-        Duration: durationText
-      }
-    })
-    
-    const ws = XLSX.utils.json_to_sheet(exportData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Time Entries')
-    XLSX.writeFile(wb, `time-entries-${new Date().toISOString().split('T')[0]}.xlsx`)
+    exportTimeEntriesToExcel(timeEntries, 'time-entries')
   }
 
   const totalTime = getTotalTime()

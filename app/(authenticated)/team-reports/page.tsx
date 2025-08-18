@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Users, ChevronLeft, ChevronRight, Filter, Clock, Download } from "lucide-react"
 import TeamTimeTable from "@/components/team-time-table"
 import { formatDuration } from "@/lib/utils"
-import * as XLSX from 'xlsx'
+import { exportTimeEntriesToExcel } from "@/lib/exportUtils"
 import { timeEntriesService } from "@/lib/timeEntries"
 
 interface TeamTimeEntry {
@@ -126,24 +126,7 @@ export default function TeamReportsPage() {
   }
 
   const exportToExcel = () => {
-    const exportData = timeEntries.map(entry => {
-      const hours = Math.floor(entry.duration / 3600)
-      const minutes = Math.floor((entry.duration % 3600) / 60)
-      const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-      
-      return {
-        User: entry.username,
-        Date: entry.date,
-        'Time In': entry.timeIn,
-        'Time Out': entry.timeOut || '-',
-        Duration: durationText
-      }
-    })
-    
-    const ws = XLSX.utils.json_to_sheet(exportData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Team Reports')
-    XLSX.writeFile(wb, `team-reports-${new Date().toISOString().split('T')[0]}.xlsx`)
+    exportTimeEntriesToExcel(timeEntries, 'team-reports', true)
   }
 
   const totalTime = getTotalTime()
