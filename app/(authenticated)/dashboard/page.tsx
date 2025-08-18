@@ -18,7 +18,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
 
-
   useEffect(() => {
     loadActiveSessions()
   }, [])
@@ -84,16 +83,16 @@ export default function DashboardPage() {
                 <p>No users are currently tracking time</p>
               </div>
             ) : (
-              <div className="space-y-2 md:space-y-3">
+              <div className="space-y-1">
                 {activeSessions.map((session, index) => {
                   const duration = calculateDuration(session.startTime)
                   const startTime = new Date(session.startTime)
                   
                   return (
-                    <div key={index} className="flex items-center justify-between py-2 md:py-3 border-b last:border-b-0">
+                    <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm md:text-base truncate">{session.username}</p>
-                        <p className="text-xs md:text-sm text-muted-foreground">
+                        <p className="font-medium text-sm truncate">{session.username}</p>
+                        <p className="text-xs text-muted-foreground">
                           Started {startTime.toLocaleTimeString("en-US", {
                             hour12: true,
                             hour: "2-digit",
@@ -102,7 +101,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <div className="text-right ml-2">
-                        <p className="font-mono text-sm md:text-base">{formatDuration(duration)}</p>
+                        <p className="font-mono text-sm">{formatDuration(duration)}</p>
                         <p className="text-xs text-muted-foreground">elapsed</p>
                       </div>
                     </div>

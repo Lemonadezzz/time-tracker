@@ -28,6 +28,31 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
   // Use the date from entries instead of hardcoded today
   const entryDate = entries.length > 0 ? entries[0].date : new Date().toLocaleDateString("en-CA")
 
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return timeStr
+    const userFormat = localStorage.getItem('timeFormat') || '12'
+    
+    if (userFormat === '24') {
+      // Convert to 24-hour format if needed
+      if (timeStr.includes('AM') || timeStr.includes('PM')) {
+        const [hourMin, ampm] = timeStr.split(' ')
+        let [hour, minute] = hourMin.split(':').map(Number)
+        if (ampm === 'PM' && hour !== 12) hour += 12
+        if (ampm === 'AM' && hour === 12) hour = 0
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+      }
+      return timeStr
+    } else {
+      // Convert to 12-hour format if needed
+      if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr
+      const [hour, minute] = timeStr.split(':')
+      const hourNum = parseInt(hour)
+      const ampm = hourNum >= 12 ? 'PM' : 'AM'
+      const hour12 = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum
+      return `${hour12}:${minute} ${ampm}`
+    }
+  }
+
   // Generate hourly markers for even numbers only
   const hoursToDisplay = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => START_HOUR + i).filter(
     (hour) => hour % 2 === 0, // Filter for even hours
@@ -126,10 +151,10 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
                 height: `${BAR_HEIGHT}px`, // Fixed height for the bar
                 top: `${HOUR_MARKER_HEIGHT + 10}px`, // Position below hour labels with some padding
               }}
-              title={`Time In: ${entry.timeIn}, Time Out: ${entry.timeOut}, Duration: ${Math.floor(entry.duration / 60)}m`}
+              title={`Time In: ${formatTime(entry.timeIn)}, Time Out: ${formatTime(entry.timeOut)}, Duration: ${Math.floor(entry.duration / 60)}h ${entry.duration % 60}m`}
             >
               <span className="sr-only">
-                Time In: {entry.timeIn}, Time Out: {entry.timeOut}, Duration: {Math.floor(entry.duration / 60)} minutes
+                Time In: {formatTime(entry.timeIn)}, Time Out: {formatTime(entry.timeOut)}, Duration: {Math.floor(entry.duration / 60)}h {entry.duration % 60}m
               </span>
             </div>
           )
@@ -167,10 +192,10 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
                 height: `${BAR_HEIGHT}px`,
                 top: `${HOUR_MARKER_HEIGHT + 10}px`,
               }}
-              title={`Currently tracking since ${entry.timeIn}`}
+              title={`Currently tracking since ${formatTime(entry.timeIn)}`}
             >
               <span className="sr-only">
-                Currently tracking since {entry.timeIn}
+                Currently tracking since {formatTime(entry.timeIn)}
               </span>
             </div>
           )

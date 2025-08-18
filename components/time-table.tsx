@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect, Fragment } from "react"
+import { useState, Fragment } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Clock, ChevronDown, ChevronRight } from "lucide-react"
 import { formatDuration } from "@/lib/utils"
 import DayTimeline from "@/components/day-timeline"
@@ -31,6 +30,31 @@ export default function TimeTable({ entries }: TimeTableProps) {
     })
   }
 
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return timeStr
+    const userFormat = localStorage.getItem('timeFormat') || '12'
+    
+    if (userFormat === '24') {
+      // Convert to 24-hour format if needed
+      if (timeStr.includes('AM') || timeStr.includes('PM')) {
+        const [hourMin, ampm] = timeStr.split(' ')
+        let [hour, minute] = hourMin.split(':').map(Number)
+        if (ampm === 'PM' && hour !== 12) hour += 12
+        if (ampm === 'AM' && hour === 12) hour = 0
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+      }
+      return timeStr
+    } else {
+      // Convert to 12-hour format if needed
+      if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr
+      const [hour, minute] = timeStr.split(':')
+      const hourNum = parseInt(hour)
+      const ampm = hourNum >= 12 ? 'PM' : 'AM'
+      const hour12 = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum
+      return `${hour12}:${minute} ${ampm}`
+    }
+  }
+
   const toggleRow = (entryId: string) => {
     const newExpanded = new Set(expandedRows)
     if (newExpanded.has(entryId)) {
@@ -42,85 +66,12 @@ export default function TimeTable({ entries }: TimeTableProps) {
   }
 
   const getEntriesForDate = (date: string) => {
-    return entries.filter(entry => entry.date === date)
+    const dayEntry = entries.find(entry => entry.date === date)
+    return dayEntry?.entries || []
   }
 
-  // Filter entries within valid time range (6 AM - 10 PM)
-  const isValidTime = (timeStr: string) => {
-    const [hourMin, ampm] = timeStr.split(' ')
-    let [hour, minute] = hourMin.split(':').map(Number)
-    if (ampm === 'PM' && hour !== 12) hour += 12
-    if (ampm === 'AM' && hour === 12) hour = 0
-    const totalMinutes = hour * 60 + minute
-    return totalMinutes >= 360 && totalMinutes <= 1320 // 6 AM (360) to 10 PM (1320)
-  }
-
-  const validEntries = entries.filter(entry => {
-    // Only include entries with valid time in and time out within range
-    const validTimeIn = isValidTime(entry.timeIn)
-    const validTimeOut = entry.timeOut ? isValidTime(entry.timeOut) : false
-    // Forfeit sessions without proper time out or outside valid hours
-    return validTimeIn && validTimeOut
-  })
-
-  // Merge fragmented entries by date
-  const mergedEntries = validEntries.reduce((acc, entry) => {
-    const key = entry.date
-    
-    if (!acc[key]) {
-      acc[key] = {
-        ...entry,
-        timeIns: [entry.timeIn],
-        timeOuts: entry.timeOut ? [entry.timeOut] : []
-      }
-    } else {
-      acc[key].timeIns.push(entry.timeIn)
-      if (entry.timeOut) acc[key].timeOuts.push(entry.timeOut)
-    }
-    
-    return acc
-  }, {} as Record<string, any>)
-
-  // Convert to array and calculate earliest/latest times
-  const consolidatedEntries = Object.values(mergedEntries).map((entry: any) => {
-    // Parse time strings to compare properly
-    const parseTimeForSort = (timeStr: string) => {
-      const [hourMin, ampm] = timeStr.split(' ')
-      let [hour, minute] = hourMin.split(':').map(Number)
-      if (ampm === 'PM' && hour !== 12) hour += 12
-      if (ampm === 'AM' && hour === 12) hour = 0
-      return hour * 60 + minute // Convert to minutes for sorting
-    }
-    
-    // Sort time ins and time outs properly
-    const sortedTimeIns = entry.timeIns.sort((a: string, b: string) => 
-      parseTimeForSort(a) - parseTimeForSort(b)
-    )
-    const sortedTimeOuts = entry.timeOuts.sort((a: string, b: string) => 
-      parseTimeForSort(a) - parseTimeForSort(b)
-    )
-    
-    const earliestTimeIn = sortedTimeIns[0]
-    const latestTimeOut = sortedTimeOuts.length > 0 ? sortedTimeOuts[sortedTimeOuts.length - 1] : null
-    
-    // Calculate actual duration between earliest and latest times
-    let actualDuration = 0
-    if (earliestTimeIn && latestTimeOut) {
-      const startMinutes = parseTimeForSort(earliestTimeIn)
-      const endMinutes = parseTimeForSort(latestTimeOut)
-      actualDuration = (endMinutes - startMinutes) * 60 // Convert to seconds
-    }
-    
-    return {
-      _id: entry._id,
-      date: entry.date,
-      timeIn: earliestTimeIn,
-      timeOut: latestTimeOut,
-      duration: actualDuration
-    }
-  })
-
-
+  // Use entries as-is since API already provides consolidated data with correct duration
+  const consolidatedEntries = entries
 
   if (consolidatedEntries.length === 0) {
     return (
@@ -132,8 +83,9 @@ export default function TimeTable({ entries }: TimeTableProps) {
   }
 
   return (
-    <div className="border rounded-lg overflow-x-auto">
-      <Table className="min-w-full">
+    <div className="border rounded-lg overflow-hidden">
+      <div className="h-[calc(100vh-300px)] overflow-y-auto overflow-x-auto">
+        <Table className="min-w-full">
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
@@ -159,15 +111,15 @@ export default function TimeTable({ entries }: TimeTableProps) {
                       <span suppressHydrationWarning>{formatDate(entry.date)}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[100px]">{entry.timeIn}</TableCell>
-                  <TableCell className="min-w-[100px]">{entry.timeOut || "-"}</TableCell>
-                  <TableCell className="text-right font-mono min-w-[80px] hidden md:table-cell">{formatDuration(entry.duration)}</TableCell>
+                  <TableCell className="min-w-[100px]">{formatTime(entry.timeIn)}</TableCell>
+                  <TableCell className="min-w-[100px]">{entry.timeOut ? formatTime(entry.timeOut) : "-"}</TableCell>
+                  <TableCell className="text-right font-mono min-w-[80px] hidden md:table-cell">{formatDuration(entry.duration * 60)}</TableCell>
                 </TableRow>
                 {isExpanded && (
                   <TableRow className="hidden md:table-row">
                     <TableCell colSpan={4} className="p-0">
                       <div className="p-4 bg-muted/20">
-                        <DayTimeline entries={dayEntries.map(e => ({...e, id: e._id || e.date + e.timeIn}))} />
+                        <DayTimeline entries={dayEntries.map(e => ({...e, id: e._id || entry.date + e.timeIn, date: entry.date}))} />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -177,6 +129,7 @@ export default function TimeTable({ entries }: TimeTableProps) {
           })}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }

@@ -38,15 +38,14 @@ export async function GET(request: NextRequest) {
         $group: {
           _id: '$date',
           totalDuration: { $sum: { $ifNull: ['$duration', 0] } },
-          uniqueUsers: { $addToSet: { $ifNull: ['$username', 'unknown'] } },
-          docCount: { $sum: 1 }
+          uniqueUsers: { $addToSet: '$userId' }
         }
       },
       {
         $project: {
           date: '$_id',
-          totalHours: { $divide: ['$totalDuration', 3600] },
-          activeUsers: { $size: '$uniqueUsers' },
+          totalHours: { $divide: ['$totalDuration', 60] },
+          activeUsers: { $size: '$uniqueUsers' }
         }
       },
       { $sort: { date: -1 } }

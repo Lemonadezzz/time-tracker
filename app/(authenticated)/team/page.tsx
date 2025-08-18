@@ -214,46 +214,45 @@ export default function TeamPage() {
                 <p>No team members found</p>
               </div>
             ) : (
-              <div className="space-y-2 md:space-y-3">
-                {users.map((user) => {
-                  const joinDate = new Date(user.createdAt)
-                  
+              <div className="h-[calc(100vh-300px)] overflow-y-auto">
+                <div className="space-y-1">
+                  {users.map((user) => {
                   return (
-                    <div key={user._id} className="flex items-center justify-between py-2 md:py-3 border-b last:border-b-0">
+                    <div key={user._id} className="flex items-center justify-between py-2 border-b last:border-b-0">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm md:text-base truncate">{user.username}</p>
-                          <Badge className={`text-xs ${getRoleBadgeColor(user.role)}`}>
+                          <p className="font-medium text-sm truncate">{user.username}</p>
+                          <Badge className={`text-xs px-1.5 py-0.5 ${getRoleBadgeColor(user.role)}`}>
                             {user.role}
                           </Badge>
                         </div>
-                        <p className="text-xs md:text-sm text-muted-foreground truncate">{user.email}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Joined {joinDate.toLocaleDateString()}
-                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                       </div>
-                      <div className="flex items-center gap-2 ml-2">
+                      <div className="flex items-center gap-1 ml-2">
                         <Button
                           variant="outline"
                           size="sm"
+                          className="h-7 w-7 p-0"
                           onClick={() => {
                             setEditingUser(user)
                             setShowEditDialog(true)
                           }}
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-3 h-3" />
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
+                          className="h-7 w-7 p-0"
                           onClick={() => handleDeleteUser(user._id)}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
                   )
                 })}
+                </div>
               </div>
             )}
           </CardContent>

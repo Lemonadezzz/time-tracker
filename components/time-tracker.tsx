@@ -112,7 +112,7 @@ export default function Component() {
 
   const loadTimeEntries = async () => {
     try {
-      const entries = await timeEntriesService.getEntries()
+      const { entries } = await timeEntriesService.getEntries()
       setTimeEntries(entries)
     } catch (error) {
       console.error('Failed to load time entries:', error)
