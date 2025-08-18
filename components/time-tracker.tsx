@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 import { Play, Square, Calendar, Clock } from "lucide-react"
 import DayTimeline from "./day-timeline" // Import the new component
-import TimeTable from "@/components/time-table" // Import the TimeTable component
-import { formatDuration } from "@/lib/utils" // Import formatDuration from utils
+
 import { timeEntriesService } from "@/lib/timeEntries"
 
 interface TimeEntry {
@@ -82,15 +81,7 @@ export default function Component() {
     return '⛈️'
   }
 
-  const getWeatherDescription = (code: number) => {
-    if (code === 0) return 'clear'
-    if (code <= 3) return 'partly cloudy'
-    if (code <= 48) return 'cloudy'
-    if (code <= 67) return 'rainy'
-    if (code <= 77) return 'snowy'
-    if (code <= 82) return 'showers'
-    return 'stormy'
-  }
+
 
   const checkActiveSession = async () => {
     try {
@@ -166,15 +157,7 @@ export default function Component() {
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  // Formats current clock time for display (HH:MM AM/PM)
-  const formatCurrentClockTime = () => {
-    const now = new Date()
-    return now.toLocaleTimeString("en-US", {
-      hour12: true,
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
+
 
   const handleTimeIn = async () => {
     if (buttonCooldown) return
