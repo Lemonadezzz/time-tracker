@@ -44,8 +44,8 @@ export default function Component() {
             // Get location
             const locationResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
             const locationData = await locationResponse.json()
-            const city = locationData.city || locationData.locality || 'Unknown City'
-            const countryCode = locationData.countryCode || 'XX'
+            const locality = locationData.locality || 'Unknown Locality'
+            const principalSubdivision = locationData.principalSubdivision || 'Unknown Region'
             
             // Get weather
             const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=celsius`)
@@ -54,7 +54,7 @@ export default function Component() {
             const weatherCode = weatherData.current_weather.weathercode
             const weatherEmoji = getWeatherEmoji(weatherCode)
             
-            setLocation(`${weatherEmoji} ${temp}°C — ${city}, ${countryCode}`)
+            setLocation(`${weatherEmoji} ${temp}°C — ${locality}, ${principalSubdivision}`)
           } catch (error) {
             setLocation('Location unavailable')
 
