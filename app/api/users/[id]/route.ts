@@ -74,24 +74,33 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getUserFromToken(request)
-    if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
+    if (!user || user.role !== 'developer') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const userId = params.id
     const db = await getDatabase()
     const users = db.collection('users')
+    const timeEntries = db.collection('timeentries')
+    const sessions = db.collection('sessions')
 
     // Prevent deleting yourself
     if (user.userId === userId) {
       return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
     }
 
-    const result = await users.deleteOne({ _id: new ObjectId(userId) })
+    // Delete user and all associated data
+    const userResult = await users.deleteOne({ _id: new ObjectId(userId) })
 
-    if (result.deletedCount === 0) {
+    if (userResult.deletedCount === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+
+    // Delete all time entries for this user
+    await timeEntries.deleteMany({ userId: userId })
+    
+    // Delete all sessions for this user
+    await sessions.deleteMany({ userId: new ObjectId(userId) })
 
     return NextResponse.json({ success: true })
   } catch (error) {

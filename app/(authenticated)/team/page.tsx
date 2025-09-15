@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Users, Clock, Plus, Edit, Trash2, UserPlus } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Users, Clock, Plus, Edit, Trash2, UserPlus, Key, Eye, EyeOff } from "lucide-react"
+import { toast } from "sonner"
+import { Toaster } from "sonner"
 
 interface User {
   _id: string
@@ -25,7 +27,17 @@ export default function TeamPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [newUser, setNewUser] = useState({ username: '', email: '', password: '', role: 'user' as const })
-  const { toast } = useToast()
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [passwordUserId, setPasswordUserId] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [currentUserRole, setCurrentUserRole] = useState('')
+  // Removed useToast hook
+
+  useEffect(() => {
+    const role = localStorage.getItem('userRole') || ''
+    setCurrentUserRole(role)
+  }, [])
 
   useEffect(() => {
     loadUsers()
@@ -59,16 +71,52 @@ export default function TeamPage() {
       })
       
       if (response.ok) {
-        toast({ title: "Success", description: "User added successfully" })
+        toast.success("User created", {
+          description: (
+            <div>
+              <div>User added successfully</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                  animation: 'progress 3s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 3000
+        })
         setNewUser({ username: '', email: '', password: '', role: 'user' })
         setShowAddDialog(false)
         loadUsers()
       } else {
         const error = await response.json()
-        toast({ title: "Error", description: error.error || "Failed to add user", variant: "destructive" })
+        toast.error("Failed to create user", {
+          description: (
+            <div>
+              <div>{error.error || "Failed to add user"}</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                  animation: 'progress 3s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 3000
+        })
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to add user", variant: "destructive" })
+      toast.error("Failed to create user", {
+        description: (
+          <div>
+            <div>Failed to add user</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
     }
   }
 
@@ -91,22 +139,56 @@ export default function TeamPage() {
       })
       
       if (response.ok) {
-        toast({ title: "Success", description: "User updated successfully" })
+        toast.success("User updated", {
+          description: (
+            <div>
+              <div>User details updated successfully</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                  animation: 'progress 3s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 3000
+        })
         setShowEditDialog(false)
         setEditingUser(null)
         loadUsers()
       } else {
         const error = await response.json()
-        toast({ title: "Error", description: error.error || "Failed to update user", variant: "destructive" })
+        toast.error("Failed to update user", {
+          description: (
+            <div>
+              <div>{error.error || "Failed to update user"}</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                  animation: 'progress 3s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 3000
+        })
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to update user", variant: "destructive" })
+      toast.error("Failed to update user", {
+        description: (
+          <div>
+            <div>Failed to update user</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
     }
   }
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return
-    
     try {
       const token = localStorage.getItem('authToken')
       const response = await fetch(`/api/users/${userId}`, {
@@ -115,14 +197,114 @@ export default function TeamPage() {
       })
       
       if (response.ok) {
-        toast({ title: "Success", description: "User deleted successfully" })
+        toast.success("User deleted", {
+          description: (
+            <div>
+              <div>User deleted successfully</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                  animation: 'progress 3s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 3000
+        })
         loadUsers()
       } else {
         const error = await response.json()
-        toast({ title: "Error", description: error.error || "Failed to delete user", variant: "destructive" })
+        toast.error("Failed to delete user", {
+          description: (
+            <div>
+              <div>{error.error || "Failed to delete user"}</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                  animation: 'progress 3s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 3000
+        })
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to delete user", variant: "destructive" })
+      toast.error("Failed to delete user", {
+        description: (
+          <div>
+            <div>Failed to delete user</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
+    }
+  }
+
+  const handleUpdatePassword = async () => {
+    if (!newPassword) return
+    
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`/api/users/${passwordUserId}/password`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: newPassword })
+      })
+      
+      if (response.ok) {
+        toast.success("Password updated", {
+          description: (
+            <div>
+              <div>Password updated successfully</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                  animation: 'progress 3s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 3000
+        })
+        setShowPasswordDialog(false)
+        setNewPassword('')
+        setPasswordUserId('')
+      } else {
+        const error = await response.json()
+        toast.error("Failed to update password", {
+          description: (
+            <div>
+              <div>{error.error || "Failed to update password"}</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                  animation: 'progress 3s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 3000
+        })
+      }
+    } catch (error) {
+      toast.error("Failed to update password", {
+        description: (
+          <div>
+            <div>Failed to update password</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
     }
   }
 
@@ -244,10 +426,49 @@ export default function TeamPage() {
                           variant="outline"
                           size="sm"
                           className="h-7 w-7 p-0"
-                          onClick={() => handleDeleteUser(user._id)}
+                          onClick={() => {
+                            setPasswordUserId(user._id)
+                            setShowPasswordDialog(true)
+                          }}
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Key className="w-3 h-3" />
                         </Button>
+                        {currentUserRole === 'developer' && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>⚠️ Delete User</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete <strong>{user.username}</strong>? This action cannot be undone and will permanently remove:
+                                  <ul className="list-disc list-inside mt-2 space-y-1">
+                                    <li>User account</li>
+                                    <li>All time entries</li>
+                                    <li>All active sessions</li>
+                                    <li>All associated data</li>
+                                  </ul>
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDeleteUser(user._id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete User
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </div>
                   )
@@ -296,6 +517,49 @@ export default function TeamPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Update Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="relative">
+              <Input
+                placeholder="New Password"
+                type={showPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleUpdatePassword} className="flex-1">Update Password</Button>
+              <Button variant="outline" onClick={() => {
+                setShowPasswordDialog(false)
+                setNewPassword('')
+                setPasswordUserId('')
+                setShowPassword(false)
+              }}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Toaster richColors position="bottom-right" />
     </div>
   )
 }
