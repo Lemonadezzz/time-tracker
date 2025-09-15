@@ -19,7 +19,7 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [isRegister, setIsRegister] = useState(false)
+
   const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,25 +34,13 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
     }
 
     try {
-      if (isRegister) {
-        const result = await authService.register(username, password)
-        if (result.success) {
-          setError("")
-          setIsRegister(false)
-          setPassword("")
-          setError("Account created! Please login.")
-        } else {
-          setError(result.error || "Registration failed")
-        }
+      const result = await authService.login(username, password)
+      if (result.success) {
+        authService.setToken(result.token)
+        localStorage.setItem('userRole', result.user.role)
+        onLogin(username)
       } else {
-        const result = await authService.login(username, password)
-        if (result.success) {
-          authService.setToken(result.token)
-          localStorage.setItem('userRole', result.user.role)
-          onLogin(username)
-        } else {
-          setError(result.error || "Login failed")
-        }
+        setError(result.error || "Login failed")
       }
     } catch (error) {
       setError("Network error. Please try again.")
@@ -65,11 +53,9 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl">{isRegister ? "Register" : "Login"}</CardTitle>
+          <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            {isRegister 
-              ? "Create an account to start tracking time." 
-              : "Enter your credentials to access the time tracker."}
+            Enter your credentials to access the time tracker.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -111,28 +97,16 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {isRegister ? "Creating account..." : "Logging in..."}
+                  Logging in...
                 </>
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  {isRegister ? "Create Account" : "Login"}
+                  Login
                 </>
               )}
             </Button>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              className="w-full" 
-              onClick={() => {
-                setIsRegister(!isRegister)
-                setError("")
-                setPassword("")
-                setShowPassword(false)
-              }}
-            >
-              {isRegister ? "Already have an account? Login" : "Need an account? Register"}
-            </Button>
+
           </form>
         </CardContent>
       </Card>

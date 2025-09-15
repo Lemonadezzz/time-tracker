@@ -70,6 +70,11 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
   const liveEntries = validEntries.filter((entry) => entry.timeOut === null)
 
   const parseTime = (timeString: string, dateString: string): Date => {
+    // Safety check for dateString
+    if (!dateString) {
+      dateString = new Date().toLocaleDateString("en-CA")
+    }
+    
     // Combine date and time string to create a full Date object in local timezone
     const [hourMin, ampm] = timeString.split(" ")
     let [hour, minute] = hourMin.split(":").map(Number)

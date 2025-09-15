@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, ChevronLeft, ChevronRight, Filter, Clock, Download } from "lucide-react"
+import { toast } from "sonner"
+import { Toaster } from "sonner"
 import TimeTable from "@/components/time-table"
 import { formatDuration } from "@/lib/utils"
 import { exportTimeEntriesToExcel } from "@/lib/exportUtils"
@@ -102,7 +104,53 @@ export default function UserTimeReportsPage() {
   }
 
   const exportToExcel = () => {
-    exportTimeEntriesToExcel(timeEntries, 'time-entries')
+    if (!timeEntries || timeEntries.length === 0) {
+      toast.error("Export failed", {
+        description: (
+          <div>
+            <div>No data to export</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
+      return
+    }
+
+    try {
+      exportTimeEntriesToExcel(timeEntries, 'time-entries')
+      toast.success("CSV exported", {
+        description: (
+          <div>
+            <div>Personal timesheet downloaded successfully</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
+    } catch (error) {
+      toast.error("Export failed", {
+        description: (
+          <div>
+            <div>Failed to download CSV file</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
+    }
   }
 
   const totalTime = getTotalTime()
@@ -251,6 +299,7 @@ export default function UserTimeReportsPage() {
           </CardContent>
         </Card>
       </div>
+      <Toaster richColors position="bottom-right" />
     </div>
   )
 }

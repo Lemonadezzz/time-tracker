@@ -22,6 +22,7 @@ export const exportTimeEntriesToExcel = (
       Date: entry.date,
       'Time In': entry.timeIn,
       'Time Out': entry.timeOut || '-',
+      Location: entry.location || 'Location Unavailable',
       Duration: durationText
     }
 

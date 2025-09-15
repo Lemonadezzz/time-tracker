@@ -89,11 +89,12 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
         <Table className="min-w-full">
         <TableHeader>
           <TableRow>
-            <TableHead>User</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Time In</TableHead>
-            <TableHead>Time Out</TableHead>
-            <TableHead className="text-right hidden md:table-cell">Duration</TableHead>
+            <TableHead className="w-[100px]">User</TableHead>
+            <TableHead className="w-[110px]">Date</TableHead>
+            <TableHead className="w-[110px]">Time In</TableHead>
+            <TableHead className="w-[110px]">Time Out</TableHead>
+            <TableHead className="w-[110px] hidden md:table-cell">Location</TableHead>
+            <TableHead className="w-[100px] text-right pr-4 hidden md:table-cell">Duration</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -105,22 +106,23 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
             return (
               <Fragment key={entryId}>
                 <TableRow className="md:cursor-pointer md:hover:bg-muted/50" onClick={() => window.innerWidth >= 768 && toggleRow(entryId)}>
-                  <TableCell className="font-medium min-w-[100px]">
+                  <TableCell className="font-medium text-sm">
                     <div className="flex items-center gap-2">
                       <span className="hidden md:inline">
                         {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </span>
-                      {entry.username}
+                      <span className="truncate">{entry.username}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="min-w-[120px]"><span suppressHydrationWarning>{formatDate(entry.date)}</span></TableCell>
-                  <TableCell className="min-w-[100px]">{formatTime(entry.timeIn)}</TableCell>
-                  <TableCell className="min-w-[100px]">{entry.timeOut ? formatTime(entry.timeOut) : "-"}</TableCell>
-                  <TableCell className="text-right font-mono min-w-[80px] hidden md:table-cell">{formatDuration(entry.duration)}</TableCell>
+                  <TableCell className="text-sm"><span suppressHydrationWarning>{formatDate(entry.date)}</span></TableCell>
+                  <TableCell className="text-sm">{formatTime(entry.timeIn)}</TableCell>
+                  <TableCell className="text-sm">{entry.timeOut ? formatTime(entry.timeOut) : "-"}</TableCell>
+                  <TableCell className="hidden md:table-cell text-sm truncate">{entry.location || 'Location Unavailable'}</TableCell>
+                  <TableCell className="text-right font-mono text-sm pr-4 hidden md:table-cell">{formatDuration(entry.duration)}</TableCell>
                 </TableRow>
                 {isExpanded && (
                   <TableRow className="hidden md:table-row">
-                    <TableCell colSpan={5} className="p-0">
+                    <TableCell colSpan={6} className="p-0">
                       <div className="p-4 bg-muted/20">
                         <DayTimeline entries={userDayEntries.map(e => ({...e, id: e._id || `${entry.username}-${entry.date}-${e.timeIn}`, date: entry.date}))} />
                       </div>

@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "sonner"
 
 import { Play, Square, Calendar, Clock } from "lucide-react"
 import DayTimeline from "./day-timeline" // Import the new component
@@ -15,6 +16,7 @@ interface TimeEntry {
   timeIn: string // HH:MM AM/PM
   timeOut: string | null // HH:MM AM/PM
   duration: number // in seconds
+  location?: string // Location where time was tracked
 }
 
 export default function Component() {
@@ -25,7 +27,10 @@ export default function Component() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [location, setLocation] = useState<string>('')
+  const [locality, setLocality] = useState<string>('')
+  const [principalSubdivision, setPrincipalSubdivision] = useState<string>('')
   const [buttonCooldown, setButtonCooldown] = useState(false)
+  const locationRequestedRef = useRef(false)
 
   // Load data from backend on mount
   useEffect(() => {
@@ -35,40 +40,80 @@ export default function Component() {
   }, [])
 
   const getUserLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const { latitude, longitude } = position.coords
-            
-            // Get location
-            const locationResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
-            const locationData = await locationResponse.json()
-            const locality = locationData.locality || 'Unknown Locality'
-            const principalSubdivision = locationData.principalSubdivision || 'Unknown Region'
-            
-            // Get weather
-            const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=celsius`)
-            const weatherData = await weatherResponse.json()
-            const temp = Math.round(weatherData.current_weather.temperature)
-            const weatherCode = weatherData.current_weather.weathercode
-            const weatherEmoji = getWeatherEmoji(weatherCode)
-            
-            setLocation(`${weatherEmoji} ${temp}°C — ${locality}, ${principalSubdivision}`)
-          } catch (error) {
-            setLocation('Location unavailable')
-
-          }
-        },
-        () => {
-          setLocation('Location access denied')
-
-        }
-      )
-    } else {
-      setLocation('Geolocation not supported')
-
+    if (!navigator.geolocation || locationRequestedRef.current) {
+      if (!navigator.geolocation) {
+        setLocation('Geolocation not supported')
+        setLocality('Location Unavailable')
+      }
+      return
     }
+
+    locationRequestedRef.current = true
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords
+          
+          // Get location
+          const locationResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
+          const locationData = await locationResponse.json()
+          const localityData = locationData.locality || 'Unknown Locality'
+          const regionData = locationData.principalSubdivision || 'Unknown Region'
+          
+          setLocality(localityData)
+          setPrincipalSubdivision(regionData)
+          
+          // Get weather
+          const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=celsius`)
+          const weatherData = await weatherResponse.json()
+          const temp = Math.round(weatherData.current_weather.temperature)
+          const weatherCode = weatherData.current_weather.weathercode
+          const weatherEmoji = getWeatherEmoji(weatherCode)
+          
+          setLocation(`${weatherEmoji} ${temp}°C — ${localityData}, ${regionData}`)
+          
+          // Custom toast with progress bar
+          const toastId = toast.success("Location updated", {
+            description: (
+              <div>
+                <div>{`${localityData}, ${regionData}`}</div>
+                <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                  <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                    animation: 'progress 3s linear forwards'
+                  }}></div>
+                </div>
+              </div>
+            ),
+            duration: 3000
+          })
+        } catch (error) {
+          setLocation('Location unavailable')
+          setLocality('Location Unavailable')
+        }
+      },
+      () => {
+        setLocation('Location access denied')
+        setLocality('Location Unavailable')
+        toast.error("Location denied", {
+          description: (
+            <div>
+              <div>Location access was denied</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                  animation: 'progress 3s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 3000
+        })
+      },
+      {
+        timeout: 10000,
+        enableHighAccuracy: true
+      }
+    )
   }
 
   const getWeatherEmoji = (code: number) => {
@@ -173,7 +218,7 @@ export default function Component() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ action: 'start' })
+        body: JSON.stringify({ action: 'start', location: locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable' })
       })
       const data = await response.json()
       
@@ -182,9 +227,35 @@ export default function Component() {
         setIsTracking(true)
         setCurrentSessionStart(now)
         setCurrentSessionTime(0)
+        toast.success("Started working", {
+          description: (
+            <div>
+              <div>Time tracking is now active</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-green-500 h-1 rounded-full animate-[progress_2s_linear_forwards]" style={{
+                  animation: 'progress 2s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 2000
+        })
       }
     } catch (error) {
       console.error('Failed to start session:', error)
+      toast.error("Failed to start timer", {
+        description: (
+          <div>
+            <div>Please try again</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
     }
   }
 
@@ -197,6 +268,34 @@ export default function Component() {
     const now = new Date()
     const duration = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
 
+    // Refresh location before creating entry to get the most current location
+    let currentLocation = 'Location Unavailable'
+    if (navigator.geolocation) {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
+        })
+        
+        const { latitude, longitude } = position.coords
+        const locationResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
+        const locationData = await locationResponse.json()
+        const localityData = locationData.locality || 'Unknown Locality'
+        const regionData = locationData.principalSubdivision || 'Unknown Region'
+        
+        currentLocation = `${localityData}, ${regionData}`
+        
+        // Update state for future use
+        setLocality(localityData)
+        setPrincipalSubdivision(regionData)
+      } catch (error) {
+        // Fall back to existing location state if refresh fails
+        currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
+      }
+    } else {
+      // Fall back to existing location state if geolocation not supported
+      currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
+    }
+    
     const newEntry = {
       date: now.toLocaleDateString("en-CA"),
       timeIn: currentSessionStart.toLocaleTimeString("en-US", {
@@ -210,6 +309,7 @@ export default function Component() {
         minute: "2-digit",
       }),
       duration: duration,
+      location: currentLocation,
     }
 
     try {
@@ -229,8 +329,25 @@ export default function Component() {
         },
         body: JSON.stringify({ action: 'stop' })
       })
+      
+      toast.success("Stopped working", {
+        description: (
+          <div>
+            <div>Session duration: {formatTimerDisplay(currentSessionTime)}</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
     } catch (error) {
       console.error('Failed to stop session:', error)
+      toast.error("Failed to stop timer", {
+        description: "Please try again"
+      })
     }
 
     setIsTracking(false)
@@ -240,7 +357,13 @@ export default function Component() {
 
   const getTodayEntries = () => {
     const today = new Date().toLocaleDateString("en-CA")
-    const completedEntries = timeEntries.filter((entry) => entry.date === today)
+    
+    // Get individual entries for today (not consolidated)
+    const todayConsolidated = timeEntries.find((entry) => entry.date === today)
+    const individualEntries = (todayConsolidated?.entries || []).map(entry => ({
+      ...entry,
+      date: today // Ensure each entry has the date field
+    }))
     
     // If currently tracking, add live session to the list
     if (isTracking && currentSessionStart) {
@@ -255,10 +378,10 @@ export default function Component() {
         timeOut: null,
         duration: currentSessionTime
       }
-      return [...completedEntries, liveEntry]
+      return [...individualEntries, liveEntry]
     }
     
-    return completedEntries
+    return individualEntries
   }
 
   const todayEntries = getTodayEntries()
@@ -348,24 +471,40 @@ export default function Component() {
                       <Clock className="w-6 h-6 md:w-6 md:h-6 animate-spin" />
                     </Button>
                   ) : !isTracking ? (
-                    <Button 
-                      onClick={handleTimeIn} 
-                      size="lg" 
-                      className={`gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0 cursor-pointer ${buttonCooldown ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={buttonCooldown}
-                    >
-                      <Play className="w-6 h-6 md:w-6 md:h-6" />
-                    </Button>
+                    <div className="relative">
+                      <Button 
+                        onClick={handleTimeIn} 
+                        size="lg" 
+                        className="gap-2 rounded-full w-20 h-20 md:w-24 md:h-24 p-0 cursor-pointer relative overflow-hidden"
+                        disabled={buttonCooldown}
+                      >
+                        <Play className="w-16 h-16 md:w-20 md:h-20 relative z-10" />
+                        {buttonCooldown && (
+                          <div className="absolute inset-0 bg-gray-400/50 rounded-full animate-pulse" />
+                        )}
+                      </Button>
+                      {buttonCooldown && (
+                        <div className="absolute inset-0 bg-gray-500/30 rounded-full animate-[slideIn_3s_ease-out]" />
+                      )}
+                    </div>
                   ) : (
-                    <Button
-                      onClick={handleTimeOut}
-                      size="lg"
-                      variant="destructive"
-                      className={`gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0 cursor-pointer ${buttonCooldown ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={buttonCooldown}
-                    >
-                      <Square className="w-6 h-6 md:w-6 md:h-6" />
-                    </Button>
+                    <div className="relative">
+                      <Button
+                        onClick={handleTimeOut}
+                        size="lg"
+                        variant="destructive"
+                        className="gap-2 rounded-full w-20 h-20 md:w-24 md:h-24 p-0 cursor-pointer relative overflow-hidden"
+                        disabled={buttonCooldown}
+                      >
+                        <Square className="w-16 h-16 md:w-20 md:h-20 relative z-10" />
+                        {buttonCooldown && (
+                          <div className="absolute inset-0 bg-gray-400/50 rounded-full animate-pulse" />
+                        )}
+                      </Button>
+                      {buttonCooldown && (
+                        <div className="absolute inset-0 bg-gray-500/30 rounded-full animate-[slideIn_3s_ease-out]" />
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

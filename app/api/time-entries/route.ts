@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
               timeIn: '$timeIn',
               timeOut: '$timeOut',
               duration: '$duration',
+              location: '$location',
               createdAt: '$createdAt'
             }
           },
@@ -85,12 +86,18 @@ export async function GET(request: NextRequest) {
       const validEntries = dayGroup.entries.filter(entry => entry.timeIn && entry.timeOut)
       
       if (validEntries.length === 0) {
+        // Find the latest available location (not "Location Unavailable")
+        const latestLocation = dayGroup.entries
+          .filter(entry => entry.location && entry.location !== 'Location Unavailable')
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.location || 'Location Unavailable'
+          
         return {
           _id: dayGroup.firstEntry._id,
           date: dayGroup._id,
           timeIn: null,
           timeOut: null,
           duration: 0,
+          location: latestLocation,
           totalDuration: 0,
           entries: dayGroup.entries
         }
@@ -108,6 +115,11 @@ export async function GET(request: NextRequest) {
       
       // Calculate total duration (sum of all individual durations)
       const totalDuration = validEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0)
+      
+      // Find the latest available location (not "Location Unavailable")
+      const latestLocation = dayGroup.entries
+        .filter(entry => entry.location && entry.location !== 'Location Unavailable')
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.location || 'Location Unavailable'
 
       return {
         _id: dayGroup.firstEntry._id,
@@ -115,6 +127,7 @@ export async function GET(request: NextRequest) {
         timeIn: earliestTimeIn,
         timeOut: latestTimeOut,
         duration: totalDuration, // Total worked time
+        location: latestLocation,
         totalDuration: totalDuration, // Same as duration for consistency
         entries: dayGroup.entries // All individual entries for timeline
       }
@@ -146,7 +159,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { date, timeIn, timeOut, duration } = await request.json()
+    const { date, timeIn, timeOut, duration, location } = await request.json()
 
     const db = await getDatabase()
 
@@ -157,6 +170,7 @@ export async function POST(request: NextRequest) {
       timeIn,
       timeOut,
       duration,
+      location: location || 'Location Unavailable',
       createdAt: now,
       updatedAt: now
     })

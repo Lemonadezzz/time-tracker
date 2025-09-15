@@ -44,14 +44,16 @@ export async function GET(request: NextRequest) {
       {
         $project: {
           date: '$_id',
-          totalHours: { $divide: ['$totalDuration', 60] },
+          totalHours: { $divide: ['$totalDuration', 3600] },
           activeUsers: { $size: '$uniqueUsers' }
         }
       },
       { $sort: { date: -1 } }
     ]).toArray()
 
-    return NextResponse.json({ activityData })
+    const response = NextResponse.json({ activityData })
+    response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+    return response
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

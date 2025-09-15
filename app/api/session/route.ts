@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { action } = await request.json()
+    const { action, location } = await request.json()
     const db = await getDatabase()
     const sessions = db.collection('sessions')
 
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       await sessions.insertOne({
         userId: new ObjectId(user.userId),
         startTime: now,
+        location: location || 'Location Unavailable',
         isActive: true,
         createdAt: now
       })

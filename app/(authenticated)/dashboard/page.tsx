@@ -10,6 +10,7 @@ interface ActiveSession {
   userId: string
   username: string
   startTime: string
+  location?: string
   createdAt: string
 }
 
@@ -25,7 +26,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date())
-    }, 1000) // Update every second
+    }, 30000) // Update every 30 seconds
     return () => clearInterval(interval)
   }, [])
 
@@ -89,8 +90,8 @@ export default function DashboardPage() {
                   const startTime = new Date(session.startTime)
                   
                   return (
-                    <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                      <div className="min-w-0 flex-1">
+                    <div key={index} className="grid grid-cols-3 gap-4 items-center py-2 border-b last:border-b-0">
+                      <div className="min-w-0">
                         <p className="font-medium text-sm truncate">{session.username}</p>
                         <p className="text-xs text-muted-foreground">
                           Started {startTime.toLocaleTimeString("en-US", {
@@ -100,7 +101,15 @@ export default function DashboardPage() {
                           })}
                         </p>
                       </div>
-                      <div className="text-right ml-2">
+                      <div className="min-w-0 text-center flex flex-col justify-center">
+                        <p className="text-xs">
+                          📍 {session.location ? session.location.split(', ')[0] : 'Location'}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {session.location ? session.location.split(', ')[1] || 'Unavailable' : 'Unavailable'}
+                        </p>
+                      </div>
+                      <div className="text-right">
                         <p className="font-mono text-sm">{formatDuration(duration)}</p>
                         <p className="text-xs text-muted-foreground">elapsed</p>
                       </div>
@@ -114,13 +123,13 @@ export default function DashboardPage() {
 
         {/* Team Activity Heatmap */}
         <Card>
-          <CardHeader className="pb-3 md:pb-6">
+          <CardHeader className="pb-0">
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 md:w-5 md:h-5" />
-              <span className="text-base md:text-xl">Team Activity</span>
+              <BarChart3 className="w-4 h-4" />
+              <span className="text-base">Team Activity</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-3 md:px-6">
+          <CardContent className="px-3 py-2">
             <ActivityHeatmap />
           </CardContent>
         </Card>
@@ -239,13 +248,13 @@ function ActivityHeatmap() {
           </div>
           
           {/* Activity squares */}
-          <div className="flex gap-1 md:gap-1">
+          <div className="flex gap-1.5">
             {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-1 md:gap-1">
+              <div key={weekIndex} className="flex flex-col gap-1.5">
                 {week.map((day, dayIndex) => (
                   <div
                     key={`${weekIndex}-${dayIndex}`}
-                    className={`w-4 h-4 md:w-4 md:h-4 rounded-sm ${getIntensityClass(day.users)} cursor-pointer hover:ring-1 hover:ring-primary/50 transition-all`}
+                    className={`w-3.5 h-3.5 ${getIntensityClass(day.users)} cursor-pointer hover:ring-1 hover:ring-primary/50 transition-all`}
                     title={`${day.date.toDateString()}: ${day.users} users, ${day.hours.toFixed(1)}h total`}
                   ></div>
                 ))}
@@ -259,11 +268,11 @@ function ActivityHeatmap() {
       <div className="flex items-center justify-between text-xs text-muted-foreground mt-4 md:mt-6">
         <span>Less</span>
         <div className="flex gap-1 md:gap-1">
-          <div className="w-4 h-4 md:w-4 md:h-4 rounded-sm bg-gray-100 dark:bg-gray-800"></div>
-          <div className="w-4 h-4 md:w-4 md:h-4 rounded-sm bg-green-200 dark:bg-green-900"></div>
-          <div className="w-4 h-4 md:w-4 md:h-4 rounded-sm bg-green-300 dark:bg-green-700"></div>
-          <div className="w-4 h-4 md:w-4 md:h-4 rounded-sm bg-green-400 dark:bg-green-600"></div>
-          <div className="w-4 h-4 md:w-4 md:h-4 rounded-sm bg-green-500 dark:bg-green-500"></div>
+          <div className="w-4 h-4 md:w-4 md:h-4 bg-gray-100 dark:bg-gray-800"></div>
+          <div className="w-4 h-4 md:w-4 md:h-4 bg-green-200 dark:bg-green-900"></div>
+          <div className="w-4 h-4 md:w-4 md:h-4 bg-green-300 dark:bg-green-700"></div>
+          <div className="w-4 h-4 md:w-4 md:h-4 bg-green-400 dark:bg-green-600"></div>
+          <div className="w-4 h-4 md:w-4 md:h-4 bg-green-500 dark:bg-green-500"></div>
         </div>
         <span>More</span>
       </div>

@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
           userId: { $toString: '$userId' },
           username: '$user.username',
           startTime: 1,
+          location: 1,
           createdAt: 1
         }
       }
