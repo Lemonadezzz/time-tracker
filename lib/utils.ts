@@ -13,3 +13,27 @@ export function formatDuration(seconds: number): string {
   }
   return `${minutes}m`
 }
+
+export function formatDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  const dateFormat = typeof window !== 'undefined' ? localStorage.getItem('dateFormat') || 'US' : 'US'
+  
+  switch (dateFormat) {
+    case 'EU':
+      return date.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })
+    case 'ISO':
+      const weekday = date.toLocaleDateString("en-US", { weekday: "short" })
+      const isoDate = date.toISOString().split('T')[0]
+      return `${weekday}, ${isoDate}`
+    default: // US
+      return date.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      })
+  }
+}

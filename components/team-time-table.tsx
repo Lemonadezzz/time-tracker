@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, Fragment } from "react"
+import { useState, Fragment, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Clock, ChevronDown, ChevronRight } from "lucide-react"
-import { formatDuration } from "@/lib/utils"
+import { formatDuration, formatDate as formatDateUtil } from "@/lib/utils"
 import DayTimeline from "@/components/day-timeline"
 
 interface TeamTimeEntry {
@@ -21,15 +21,15 @@ interface TeamTimeTableProps {
 
 export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [, forceUpdate] = useState({})
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    })
-  }
+  useEffect(() => {
+    const handleDateFormatChange = () => forceUpdate({})
+    window.addEventListener('dateFormatChanged', handleDateFormatChange)
+    return () => window.removeEventListener('dateFormatChanged', handleDateFormatChange)
+  }, [])
+
+
 
   const formatTime = (timeStr: string) => {
     if (!timeStr) return timeStr
@@ -114,7 +114,7 @@ export default function TeamTimeTable({ entries }: TeamTimeTableProps) {
                       <span className="truncate">{entry.username}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm"><span suppressHydrationWarning>{formatDate(entry.date)}</span></TableCell>
+                  <TableCell className="text-sm"><span suppressHydrationWarning>{formatDateUtil(entry.date)}</span></TableCell>
                   <TableCell className="text-sm">{formatTime(entry.timeIn)}</TableCell>
                   <TableCell className="text-sm">{entry.timeOut ? formatTime(entry.timeOut) : "-"}</TableCell>
                   <TableCell className="hidden md:table-cell text-sm truncate">{entry.location || 'Location Unavailable'}</TableCell>

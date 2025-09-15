@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, ChevronLeft, ChevronRight, Timer, FileText, BarChart3, Settings, Users, TrendingUp, Moon, Sun, MoreVertical, X } from "lucide-react"
+import { LogOut, User, ChevronLeft, ChevronRight, Timer, FileText, BarChart3, Settings, Users, TrendingUp, Moon, Sun, MoreVertical, X, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/lib/theme"
 
@@ -20,6 +20,7 @@ const allNavigation = [
   { name: "Team", href: "/team", icon: Users, roles: ['admin', 'developer'] },
   { name: "Team Reports", href: "/team-reports", icon: TrendingUp, roles: ['admin', 'developer'] },
   { name: "Settings", href: "/settings", icon: Settings, roles: ['admin', 'user', 'developer'] },
+  { name: "About", href: "/about", icon: Info, roles: ['admin', 'user', 'developer'] },
 ]
 
 export default function Sidebar({ username, onLogout }: SidebarProps) {

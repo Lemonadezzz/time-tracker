@@ -21,12 +21,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const limit = Math.min(parseInt(searchParams.get('limit') || '25'), 100)
+    const offset = parseInt(searchParams.get('offset') || '0')
+
     const db = await getDatabase()
     const logs = db.collection('system_logs')
 
     const systemLogs = await logs.find({})
       .sort({ timestamp: -1 })
-      .limit(100)
+      .skip(offset)
+      .limit(limit)
       .toArray()
 
     const serializedLogs = systemLogs.map(log => ({

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Settings, Terminal, Activity, Clock } from "lucide-react"
+import { Settings, Terminal, Activity, Clock, Calendar } from "lucide-react"
 
 interface SystemLog {
   _id: string
@@ -18,35 +18,59 @@ export default function SettingsPage() {
   const [logs, setLogs] = useState<SystemLog[]>([])
   const [loading, setLoading] = useState(true)
   const [timeFormat, setTimeFormat] = useState<'12' | '24'>('12')
+  const [dateFormat, setDateFormat] = useState<'US' | 'EU' | 'ISO'>('US')
+  const [hasMore, setHasMore] = useState(true)
+  const [offset, setOffset] = useState(0)
+  const LIMIT = 25
 
   useEffect(() => {
-    loadSystemLogs()
-    const interval = setInterval(loadSystemLogs, 5000) // Refresh every 5 seconds
+    loadSystemLogs(true)
+    const interval = setInterval(() => loadSystemLogs(true), 30000) // Refresh every 30 seconds
     return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
-    const savedFormat = localStorage.getItem('timeFormat') as '12' | '24'
-    if (savedFormat) {
-      setTimeFormat(savedFormat)
+    const savedTimeFormat = localStorage.getItem('timeFormat') as '12' | '24'
+    if (savedTimeFormat) {
+      setTimeFormat(savedTimeFormat)
+    }
+    const savedDateFormat = localStorage.getItem('dateFormat') as 'US' | 'EU' | 'ISO'
+    if (savedDateFormat) {
+      setDateFormat(savedDateFormat)
     }
   }, [])
 
   const handleTimeFormatChange = (format: '12' | '24') => {
     setTimeFormat(format)
     localStorage.setItem('timeFormat', format)
-    // Trigger a custom event to notify other components
     window.dispatchEvent(new CustomEvent('timeFormatChanged', { detail: format }))
   }
 
-  const loadSystemLogs = async () => {
+  const handleDateFormatChange = (format: 'US' | 'EU' | 'ISO') => {
+    setDateFormat(format)
+    localStorage.setItem('dateFormat', format)
+    window.dispatchEvent(new CustomEvent('dateFormatChanged', { detail: format }))
+  }
+
+  const loadSystemLogs = async (reset = false) => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('/api/system-logs', {
+      const currentOffset = reset ? 0 : offset
+      const response = await fetch(`/api/system-logs?limit=${LIMIT}&offset=${currentOffset}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
-      setLogs(data.logs || [])
+      const newLogs = data.logs || []
+      
+      if (reset) {
+        setLogs(newLogs)
+        setOffset(LIMIT)
+      } else {
+        setLogs(prev => [...prev, ...newLogs])
+        setOffset(prev => prev + LIMIT)
+      }
+      
+      setHasMore(newLogs.length === LIMIT)
     } catch (error) {
       console.error('Failed to load system logs:', error)
     } finally {
@@ -86,36 +110,77 @@ export default function SettingsPage() {
           <h1 className="text-2xl font-bold">Settings</h1>
         </div>
 
-        {/* Time Format Preference */}
-        <Card>
-          <CardHeader className="pb-4 md:pb-6">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              <span className="text-lg md:text-xl">Time Format</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 md:px-6">
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">Choose your preferred time format:</span>
-              <div className="flex gap-2">
-                <Button
-                  variant={timeFormat === '12' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleTimeFormatChange('12')}
-                >
-                  12-hour (2:30 PM)
-                </Button>
-                <Button
-                  variant={timeFormat === '24' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleTimeFormatChange('24')}
-                >
-                  24-hour (14:30)
-                </Button>
+        {/* Format Preferences */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          {/* Time Format */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                <span className="text-lg">Time Format</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4">
+              <div className="space-y-3">
+                <span className="text-sm text-muted-foreground">Choose your preferred time format:</span>
+                <div className="flex gap-2">
+                  <Button
+                    variant={timeFormat === '12' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleTimeFormatChange('12')}
+                  >
+                    12-hour
+                  </Button>
+                  <Button
+                    variant={timeFormat === '24' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleTimeFormatChange('24')}
+                  >
+                    24-hour
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Date Format */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                <span className="text-lg">Date Format</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4">
+              <div className="space-y-3">
+                <span className="text-sm text-muted-foreground">Choose your preferred date format:</span>
+                <div className="flex gap-2">
+                  <Button
+                    variant={dateFormat === 'US' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleDateFormatChange('US')}
+                  >
+                    US (MM/DD/YYYY)
+                  </Button>
+                  <Button
+                    variant={dateFormat === 'EU' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleDateFormatChange('EU')}
+                  >
+                    EU (DD/MM/YYYY)
+                  </Button>
+                  <Button
+                    variant={dateFormat === 'ISO' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleDateFormatChange('ISO')}
+                  >
+                    ISO (YYYY-MM-DD)
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* System Logs Terminal */}
         <Card>
@@ -147,6 +212,18 @@ export default function SettingsPage() {
                       <span className="text-gray-600"> ({log.ip})</span>
                     </div>
                   ))}
+                  {hasMore && !loading && (
+                    <div className="mt-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => loadSystemLogs()}
+                        className="text-xs bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                      >
+                        Load More
+                      </Button>
+                    </div>
+                  )}
                   <div className="text-green-400 animate-pulse">
                     <span>$ </span>Monitoring system activity...
                   </div>

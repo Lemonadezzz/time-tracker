@@ -285,7 +285,7 @@ export default function TeamReportsPage() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>Show</span>
                   <Select value={entriesPerPage.toString()} onValueChange={handlePageSizeChange}>
-                    <SelectTrigger className="w-16 h-8">
+                    <SelectTrigger className="w-20 h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

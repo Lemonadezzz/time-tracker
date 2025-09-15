@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, Fragment } from "react"
+import { useState, Fragment, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Clock, ChevronDown, ChevronRight } from "lucide-react"
-import { formatDuration } from "@/lib/utils"
+import { formatDuration, formatDate as formatDateUtil } from "@/lib/utils"
 import DayTimeline from "@/components/day-timeline"
 
 interface TimeEntry {
@@ -20,15 +20,15 @@ interface TimeTableProps {
 
 export default function TimeTable({ entries }: TimeTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [, forceUpdate] = useState({})
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    })
-  }
+  useEffect(() => {
+    const handleDateFormatChange = () => forceUpdate({})
+    window.addEventListener('dateFormatChanged', handleDateFormatChange)
+    return () => window.removeEventListener('dateFormatChanged', handleDateFormatChange)
+  }, [])
+
+
 
   const formatTime = (timeStr: string) => {
     if (!timeStr) return timeStr
@@ -109,7 +109,7 @@ export default function TimeTable({ entries }: TimeTableProps) {
                       <span className="hidden md:inline">
                         {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </span>
-                      <span suppressHydrationWarning>{formatDate(entry.date)}</span>
+                      <span suppressHydrationWarning>{formatDateUtil(entry.date)}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">{formatTime(entry.timeIn)}</TableCell>
