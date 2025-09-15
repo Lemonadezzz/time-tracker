@@ -19,11 +19,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     const user = await getUserFromToken(request)
     if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { role } = await request.json()
-    if (!['admin', 'user'].includes(role)) {
+    if (!['admin', 'user', 'developer'].includes(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 

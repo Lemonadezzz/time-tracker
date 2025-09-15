@@ -20,7 +20,7 @@ export async function PUT(request: NextRequest) {
   try {
     const user = await getUserFromToken(request)
     if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { userId, username, password } = await request.json()

@@ -18,8 +18,8 @@ async function getUserFromToken(request: NextRequest) {
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getUserFromToken(request)
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { username, email, role } = await request.json()
@@ -74,8 +74,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getUserFromToken(request)
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const userId = params.id
