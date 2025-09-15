@@ -42,8 +42,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromToken(request)
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { username, email, password, role } = await request.json()

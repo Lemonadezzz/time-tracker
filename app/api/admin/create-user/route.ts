@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromToken(request)
     if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { username, password, role } = await request.json()
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Username and password required' }, { status: 400 })
     }
 
-    if (!['admin', 'user'].includes(role)) {
+    if (!['admin', 'user', 'developer'].includes(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
