@@ -103,7 +103,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
+    <div className="min-h-screen bg-background p-3 md:p-6 md:pt-6">
       <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
         <div className="flex items-center gap-2">
           <Settings className="w-6 h-6" />
@@ -154,11 +154,12 @@ export default function SettingsPage() {
             <CardContent className="px-4">
               <div className="space-y-3">
                 <span className="text-sm text-muted-foreground">Choose your preferred date format:</span>
-                <div className="flex gap-2">
+                <div className="flex flex-col md:flex-row gap-2">
                   <Button
                     variant={dateFormat === 'US' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => handleDateFormatChange('US')}
+                    className="text-xs md:text-sm"
                   >
                     US (MM/DD/YYYY)
                   </Button>
@@ -166,6 +167,7 @@ export default function SettingsPage() {
                     variant={dateFormat === 'EU' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => handleDateFormatChange('EU')}
+                    className="text-xs md:text-sm"
                   >
                     EU (DD/MM/YYYY)
                   </Button>
@@ -173,6 +175,7 @@ export default function SettingsPage() {
                     variant={dateFormat === 'ISO' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => handleDateFormatChange('ISO')}
+                    className="text-xs md:text-sm"
                   >
                     ISO (YYYY-MM-DD)
                   </Button>

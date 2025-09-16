@@ -43,7 +43,7 @@ export default function AuthenticatedLayout({
   return (
     <div className="flex min-h-screen" suppressHydrationWarning>
       <Sidebar username={username} onLogout={handleLogout} />
-      <div className="flex-1 md:ml-0 pt-16 md:pt-0">{children}</div>
+      <div className="flex-1 pt-16 md:pt-0" style={{ marginLeft: 'var(--sidebar-width, 0px)' }}>{children}</div>
     </div>
   )
 }

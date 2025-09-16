@@ -82,6 +82,16 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
 
   return (
     <>
+      <style jsx global>{`
+        :root {
+          --sidebar-width: ${sidebarCollapsed ? '64px' : '256px'};
+        }
+        @media (max-width: 768px) {
+          :root {
+            --sidebar-width: 0px;
+          }
+        }
+      `}</style>
       {/* Mobile Topbar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b px-4 py-3">
         <div className="flex items-center justify-between">
@@ -152,7 +162,7 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
       {/* Desktop Sidebar */}
       <div
         className={cn(
-          "bg-card border-r flex-col transition-all duration-300 ease-in-out relative",
+          "bg-card border-r flex-col transition-all duration-300 ease-in-out fixed left-0 top-0 h-screen z-30",
           "hidden md:flex",
           sidebarCollapsed ? "w-16" : "w-64"
         )}
