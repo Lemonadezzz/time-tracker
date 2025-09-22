@@ -103,11 +103,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Sort entries by time in
+      // Sort entries by time in (handle 12-hour format properly)
       const sortedEntries = validEntries.sort((a, b) => {
-        const timeA = new Date(`1970-01-01 ${a.timeIn}`).getTime()
-        const timeB = new Date(`1970-01-01 ${b.timeIn}`).getTime()
-        return timeA - timeB
+        const parseTime = (timeStr) => {
+          const [time, period] = timeStr.split(' ')
+          const [hours, minutes] = time.split(':').map(Number)
+          let hour24 = hours
+          if (period === 'PM' && hours !== 12) hour24 += 12
+          if (period === 'AM' && hours === 12) hour24 = 0
+          return hour24 * 60 + minutes // Convert to minutes for comparison
+        }
+        return parseTime(a.timeIn) - parseTime(b.timeIn)
       })
 
       const earliestTimeIn = sortedEntries[0].timeIn

@@ -156,7 +156,7 @@ export default function Component() {
     }
   }
 
-  // Timer effect
+  // Timer effect with auto-stop at 10pm
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
 
@@ -165,6 +165,11 @@ export default function Component() {
         const now = new Date()
         const diff = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
         setCurrentSessionTime(diff)
+        
+        // Auto-stop at 10pm (22:00)
+        if (now.getHours() === 22 && now.getMinutes() === 0) {
+          handleAutoStop()
+        }
       }, 1000)
     }
 
@@ -173,10 +178,17 @@ export default function Component() {
     }
   }, [isTracking, currentSessionStart])
 
-  // Update current time every minute
+  // Update current time every minute and check for auto-stop
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(new Date())
+      const now = new Date()
+      setCurrentTime(now)
+      
+      // Check for auto-stop at 10pm
+      if (now.getHours() === 22 && now.getMinutes() === 0) {
+        fetch('/api/auto-stop', { method: 'POST' })
+          .catch(error => console.error('Auto-stop check failed:', error))
+      }
     }, 60000) // Update every minute
 
     return () => clearInterval(interval)
@@ -206,6 +218,49 @@ export default function Component() {
 
   const handleTimeIn = async () => {
     if (buttonCooldown) return
+    
+    const now = new Date()
+    
+    // Check work hours (6AM - 10PM)
+    if (now.getHours() < 6 || now.getHours() >= 22) {
+      toast.error("Cannot start timer", {
+        description: (
+          <div>
+            <div>Work hours are 6:00 AM - 10:00 PM</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
+      return
+    }
+    
+    // Check daily hours limit (16 hours including lunch)
+    const today = now.toLocaleDateString("en-CA")
+    const todayEntries = timeEntries.filter(entry => entry.date === today)
+    const todayDuration = todayEntries.reduce((total, entry) => total + entry.duration, 0)
+    const maxDuration = 16 * 60 * 60 // 16 hours in seconds
+    
+    if (todayDuration >= maxDuration) {
+      toast.error("Daily limit reached", {
+        description: (
+          <div>
+            <div>Maximum 16 hours per day (including lunch)</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
+      return
+    }
     
     setButtonCooldown(true)
     setTimeout(() => setButtonCooldown(false), 3000)
@@ -259,6 +314,65 @@ export default function Component() {
     }
   }
 
+  const handleAutoStop = async () => {
+    if (!currentSessionStart) return
+    
+    const stopTime = new Date()
+    stopTime.setHours(22, 0, 0, 0) // Set to exactly 10:00 PM
+    
+    const duration = Math.floor((stopTime.getTime() - currentSessionStart.getTime()) / 1000)
+    
+    // Use the location from when timer started (stored in state)
+    const startLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
+    
+    const newEntry = {
+      date: currentSessionStart.toLocaleDateString("en-CA"),
+      timeIn: currentSessionStart.toLocaleTimeString("en-US", {
+        hour12: true,
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      timeOut: "10:00 PM",
+      duration: duration,
+      location: startLocation,
+    }
+
+    try {
+      await timeEntriesService.createEntry(newEntry)
+      await loadTimeEntries()
+      
+      const token = localStorage.getItem('authToken')
+      await fetch('/api/session', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'stop' })
+      })
+      
+      toast.warning("Timer auto-stopped", {
+        description: (
+          <div>
+            <div>Automatically stopped at 10:00 PM</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-orange-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 5000
+      })
+    } catch (error) {
+      console.error('Failed to auto-stop timer:', error)
+    }
+
+    setIsTracking(false)
+    setCurrentSessionStart(null)
+    setCurrentSessionTime(0)
+  }
+
   const handleTimeOut = async () => {
     if (!currentSessionStart || buttonCooldown) return
     
@@ -268,33 +382,8 @@ export default function Component() {
     const now = new Date()
     const duration = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
 
-    // Refresh location before creating entry to get the most current location
-    let currentLocation = 'Location Unavailable'
-    if (navigator.geolocation) {
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
-        })
-        
-        const { latitude, longitude } = position.coords
-        const locationResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
-        const locationData = await locationResponse.json()
-        const localityData = locationData.locality || 'Unknown Locality'
-        const regionData = locationData.principalSubdivision || 'Unknown Region'
-        
-        currentLocation = `${localityData}, ${regionData}`
-        
-        // Update state for future use
-        setLocality(localityData)
-        setPrincipalSubdivision(regionData)
-      } catch (error) {
-        // Fall back to existing location state if refresh fails
-        currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
-      }
-    } else {
-      // Fall back to existing location state if geolocation not supported
-      currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
-    }
+    // Use current location for manual stop
+    let currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
     
     const newEntry = {
       date: now.toLocaleDateString("en-CA"),
