@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { getDatabase } from '@/lib/mongodb'
 
-export async function GET(request: NextRequest) {
+export async function checkAndStopExpiredSessions() {
   try {
     const db = await getDatabase()
     const sessions = db.collection('sessions')
@@ -54,20 +53,16 @@ export async function GET(request: NextRequest) {
           details: `Timer automatically stopped at 10:00 PM`,
           username: user?.username || 'Unknown',
           timestamp: now,
-          ip: 'cron'
+          ip: 'auto'
         })
 
         stoppedCount++
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      stoppedSessions: stoppedCount,
-      timestamp: now.toISOString()
-    })
+    return stoppedCount
   } catch (error) {
-    console.error('Auto-stop cron error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Auto-stop helper error:', error)
+    return 0
   }
 }

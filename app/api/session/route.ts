@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { ObjectId } from 'mongodb'
 import { getDatabase } from '@/lib/mongodb'
+import { checkAndStopExpiredSessions } from '@/lib/auto-stop-helper'
 
 async function getUserFromToken(request: NextRequest) {
   const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -21,6 +22,9 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Check and stop any expired sessions
+    await checkAndStopExpiredSessions()
 
     const db = await getDatabase()
     const sessions = db.collection('sessions')

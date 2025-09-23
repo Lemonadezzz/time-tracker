@@ -38,12 +38,7 @@ export default function Component() {
     checkActiveSession()
     getUserLocation()
     
-    // Immediate auto-stop check
-    const now = new Date()
-    if (now.getHours() >= 22) {
-      fetch('/api/cron/auto-stop')
-        .catch(error => console.error('Initial auto-stop check failed:', error))
-    }
+
   }, [])
 
   const getUserLocation = () => {
@@ -185,17 +180,10 @@ export default function Component() {
     }
   }, [isTracking, currentSessionStart])
 
-  // Update current time every minute and check for auto-stop
+  // Update current time every minute
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date()
-      setCurrentTime(now)
-      
-      // Check for auto-stop at or after 10pm
-      if (now.getHours() >= 22) {
-        fetch('/api/cron/auto-stop')
-          .catch(error => console.error('Auto-stop check failed:', error))
-      }
+      setCurrentTime(new Date())
     }, 60000) // Update every minute
 
     return () => clearInterval(interval)

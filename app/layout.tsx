@@ -3,7 +3,6 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
-import { startAutoStopScheduler } from '@/lib/auto-stop-scheduler'
 
 export const metadata: Metadata = {
   title: 'v0 App',
@@ -16,11 +15,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  // Start auto-stop scheduler on server startup
-  if (typeof window === 'undefined') {
-    startAutoStopScheduler()
-  }
-  
   return (
     <html lang="en">
       <head>
