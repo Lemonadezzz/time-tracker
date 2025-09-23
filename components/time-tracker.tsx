@@ -166,8 +166,8 @@ export default function Component() {
         const diff = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
         setCurrentSessionTime(diff)
         
-        // Auto-stop at 10pm (22:00)
-        if (now.getHours() === 22 && now.getMinutes() === 0) {
+        // Auto-stop at or after 10pm (22:00)
+        if (now.getHours() >= 22) {
           handleAutoStop()
         }
       }, 1000)
@@ -184,8 +184,8 @@ export default function Component() {
       const now = new Date()
       setCurrentTime(now)
       
-      // Check for auto-stop at 10pm
-      if (now.getHours() === 22 && now.getMinutes() === 0) {
+      // Check for auto-stop at or after 10pm
+      if (now.getHours() >= 22) {
         fetch('/api/auto-stop', { method: 'POST' })
           .catch(error => console.error('Auto-stop check failed:', error))
       }

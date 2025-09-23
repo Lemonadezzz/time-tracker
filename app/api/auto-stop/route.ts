@@ -20,14 +20,19 @@ export async function POST(request: NextRequest) {
     let stoppedCount = 0
 
     for (const session of activeSessions) {
-      // Check if session started before 10pm today and it's now past 10pm
       const sessionStart = new Date(session.startTime)
-      const isToday = sessionStart.toDateString() === now.toDateString()
-      const isPast10PM = now.getHours() >= 22
+      const sessionDate = new Date(sessionStart.getFullYear(), sessionStart.getMonth(), sessionStart.getDate())
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       
-      if (isToday && isPast10PM && sessionStart.getHours() < 22) {
-        // Calculate duration until 10pm
-        const duration = Math.floor((stopTime.getTime() - sessionStart.getTime()) / 1000)
+      // Check if session should be auto-stopped (started before today OR started today before 10pm and it's now past 10pm)
+      const shouldStop = sessionDate < today || 
+        (sessionDate.getTime() === today.getTime() && now.getHours() >= 22 && sessionStart.getHours() < 22)
+      
+      if (shouldStop) {
+        // Calculate duration until 10pm of the session start date
+        const sessionEndTime = new Date(sessionStart)
+        sessionEndTime.setHours(22, 0, 0, 0)
+        const duration = Math.floor((sessionEndTime.getTime() - sessionStart.getTime()) / 1000)
         
         // Get user info
         const user = await users.findOne({ _id: session.userId })
@@ -51,7 +56,7 @@ export async function POST(request: NextRequest) {
         // Stop the session
         await sessions.updateOne(
           { _id: session._id },
-          { $set: { isActive: false, endTime: stopTime } }
+          { $set: { isActive: false, endTime: sessionEndTime } }
         )
 
         // Log auto-stop
