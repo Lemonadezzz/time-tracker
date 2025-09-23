@@ -37,6 +37,13 @@ export default function Component() {
     loadTimeEntries()
     checkActiveSession()
     getUserLocation()
+    
+    // Immediate auto-stop check
+    const now = new Date()
+    if (now.getHours() >= 22) {
+      fetch('/api/cron/auto-stop')
+        .catch(error => console.error('Initial auto-stop check failed:', error))
+    }
   }, [])
 
   const getUserLocation = () => {
@@ -186,7 +193,7 @@ export default function Component() {
       
       // Check for auto-stop at or after 10pm
       if (now.getHours() >= 22) {
-        fetch('/api/auto-stop', { method: 'POST' })
+        fetch('/api/cron/auto-stop')
           .catch(error => console.error('Auto-stop check failed:', error))
       }
     }, 60000) // Update every minute
