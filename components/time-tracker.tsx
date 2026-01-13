@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
@@ -178,7 +178,7 @@ export default function Component() {
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [isTracking, currentSessionStart])
+  }, [isTracking, currentSessionStart, handleAutoStop])
 
   // Update current time every minute
   useEffect(() => {
@@ -309,7 +309,7 @@ export default function Component() {
     }
   }
 
-  const handleAutoStop = async () => {
+  const handleAutoStop = useCallback(async () => {
     if (!currentSessionStart) return
     
     const stopTime = new Date()
@@ -366,7 +366,7 @@ export default function Component() {
     setIsTracking(false)
     setCurrentSessionStart(null)
     setCurrentSessionTime(0)
-  }
+  }, [currentSessionStart, locality, principalSubdivision])
 
   const handleTimeOut = async () => {
     if (!currentSessionStart || buttonCooldown) return
