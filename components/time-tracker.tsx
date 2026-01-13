@@ -158,6 +158,63 @@ export default function Component() {
     }
   }
 
+  const handleAutoStop = useCallback(async () => {
+    if (!currentSessionStart) return
+    
+    const stopTime = new Date()
+    stopTime.setHours(22, 0, 0, 0)
+    
+    const duration = Math.floor((stopTime.getTime() - currentSessionStart.getTime()) / 1000)
+    const startLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
+    
+    const newEntry = {
+      date: currentSessionStart.toLocaleDateString("en-CA"),
+      timeIn: currentSessionStart.toLocaleTimeString("en-US", {
+        hour12: true,
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      timeOut: "10:00 PM",
+      duration: duration,
+      location: startLocation,
+    }
+
+    try {
+      await timeEntriesService.createEntry(newEntry)
+      await loadTimeEntries()
+      
+      const token = localStorage.getItem('authToken')
+      await fetch('/api/session', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'stop' })
+      })
+      
+      toast.warning("Timer auto-stopped", {
+        description: (
+          <div>
+            <div>Automatically stopped at 10:00 PM</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-orange-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 5000
+      })
+    } catch (error) {
+      console.error('Failed to auto-stop timer:', error)
+    }
+
+    setIsTracking(false)
+    setCurrentSessionStart(null)
+    setCurrentSessionTime(0)
+  }, [currentSessionStart, locality, principalSubdivision])
+
   // Timer effect with auto-stop at 10pm
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -308,65 +365,6 @@ export default function Component() {
       })
     }
   }
-
-  const handleAutoStop = useCallback(async () => {
-    if (!currentSessionStart) return
-    
-    const stopTime = new Date()
-    stopTime.setHours(22, 0, 0, 0) // Set to exactly 10:00 PM
-    
-    const duration = Math.floor((stopTime.getTime() - currentSessionStart.getTime()) / 1000)
-    
-    // Use the location from when timer started (stored in state)
-    const startLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
-    
-    const newEntry = {
-      date: currentSessionStart.toLocaleDateString("en-CA"),
-      timeIn: currentSessionStart.toLocaleTimeString("en-US", {
-        hour12: true,
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      timeOut: "10:00 PM",
-      duration: duration,
-      location: startLocation,
-    }
-
-    try {
-      await timeEntriesService.createEntry(newEntry)
-      await loadTimeEntries()
-      
-      const token = localStorage.getItem('authToken')
-      await fetch('/api/session', {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'stop' })
-      })
-      
-      toast.warning("Timer auto-stopped", {
-        description: (
-          <div>
-            <div>Automatically stopped at 10:00 PM</div>
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-              <div className="bg-orange-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
-                animation: 'progress 3s linear forwards'
-              }}></div>
-            </div>
-          </div>
-        ),
-        duration: 5000
-      })
-    } catch (error) {
-      console.error('Failed to auto-stop timer:', error)
-    }
-
-    setIsTracking(false)
-    setCurrentSessionStart(null)
-    setCurrentSessionTime(0)
-  }, [currentSessionStart, locality, principalSubdivision])
 
   const handleTimeOut = async () => {
     if (!currentSessionStart || buttonCooldown) return
