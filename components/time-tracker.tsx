@@ -161,7 +161,8 @@ export default function Component() {
   const handleAutoStop = useCallback(async () => {
     if (!currentSessionStart) return
     
-    const stopTime = new Date()
+    // Create stop time at exactly 10:00 PM on the same day as session start
+    const stopTime = new Date(currentSessionStart)
     stopTime.setHours(22, 0, 0, 0)
     
     const duration = Math.floor((stopTime.getTime() - currentSessionStart.getTime()) / 1000)
