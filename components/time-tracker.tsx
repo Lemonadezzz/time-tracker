@@ -161,9 +161,9 @@ export default function Component() {
   const handleAutoStop = useCallback(async () => {
     if (!currentSessionStart) return
     
-    // Create stop time at exactly 10:00 PM TODAY (when auto-stop triggers)
-    const now = new Date()
-    const stopTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 22, 0, 0, 0)
+    // Create stop time at exactly 10:00 PM on the SAME DAY as session start
+    const stopTime = new Date(currentSessionStart)
+    stopTime.setHours(22, 0, 0, 0)
     
     const duration = Math.floor((stopTime.getTime() - currentSessionStart.getTime()) / 1000)
     const startLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
