@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 
 import { Play, Square, Calendar, Clock } from "lucide-react"
-import DayTimeline from "./day-timeline" // Import the new component
+import DayTimeline from "./day-timeline"
 
 import { timeEntriesService } from "@/lib/timeEntries"
 
@@ -31,14 +31,13 @@ export default function Component() {
   const [principalSubdivision, setPrincipalSubdivision] = useState<string>('')
   const [buttonCooldown, setButtonCooldown] = useState(false)
   const locationRequestedRef = useRef(false)
+  const isStoppingRef = useRef(false)
 
   // Load data from backend on mount
   useEffect(() => {
     loadTimeEntries()
     checkActiveSession()
     getUserLocation()
-    
-
   }, [])
 
   const getUserLocation = () => {
@@ -75,8 +74,7 @@ export default function Component() {
           
           setLocation(`${weatherEmoji} ${temp}°C — ${localityData}, ${regionData}`)
           
-          // Custom toast with progress bar
-          const toastId = toast.success("Location updated", {
+          toast.success("Location updated", {
             description: (
               <div>
                 <div>{`${localityData}, ${regionData}`}</div>
@@ -128,8 +126,6 @@ export default function Component() {
     return '⛈️'
   }
 
-
-
   const checkActiveSession = async () => {
     try {
       const token = localStorage.getItem('authToken')
@@ -158,65 +154,7 @@ export default function Component() {
     }
   }
 
-  const handleAutoStop = useCallback(async () => {
-    if (!currentSessionStart) return
-    
-    // Create stop time at exactly 10:00 PM on the SAME DAY as session start
-    const stopTime = new Date(currentSessionStart)
-    stopTime.setHours(22, 0, 0, 0)
-    
-    const duration = Math.floor((stopTime.getTime() - currentSessionStart.getTime()) / 1000)
-    const startLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
-    
-    const newEntry = {
-      date: currentSessionStart.toLocaleDateString("en-CA"),
-      timeIn: currentSessionStart.toLocaleTimeString("en-US", {
-        hour12: true,
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      timeOut: "10:00 PM",
-      duration: duration,
-      location: startLocation,
-    }
-
-    try {
-      await timeEntriesService.createEntry(newEntry)
-      await loadTimeEntries()
-      
-      const token = localStorage.getItem('authToken')
-      await fetch('/api/session', {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'stop' })
-      })
-      
-      toast.warning("Timer auto-stopped", {
-        description: (
-          <div>
-            <div>Automatically stopped at 10:00 PM</div>
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-              <div className="bg-orange-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
-                animation: 'progress 3s linear forwards'
-              }}></div>
-            </div>
-          </div>
-        ),
-        duration: 5000
-      })
-    } catch (error) {
-      console.error('Failed to auto-stop timer:', error)
-    }
-
-    setIsTracking(false)
-    setCurrentSessionStart(null)
-    setCurrentSessionTime(0)
-  }, [currentSessionStart, locality, principalSubdivision])
-
-  // Timer effect with auto-stop at 10pm
+  // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
 
@@ -225,20 +163,14 @@ export default function Component() {
         const now = new Date()
         const diff = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
         setCurrentSessionTime(diff)
-        
-        // Auto-stop at or after 10pm (22:00)
-        if (now.getHours() >= 22) {
-          handleAutoStop()
-        }
       }, 1000)
     }
 
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [isTracking, currentSessionStart, handleAutoStop])
+  }, [isTracking, currentSessionStart])
 
-  // Update current time every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date())
@@ -247,19 +179,16 @@ export default function Component() {
     return () => clearInterval(interval)
   }, [])
 
-  // Force timeline re-render every 30 minutes when tracking
   useEffect(() => {
     if (!isTracking) return
     
     const interval = setInterval(() => {
-      // Force component re-render to update timeline
       setCurrentTime(new Date())
-    }, 30 * 60 * 1000) // 30 minutes
+    }, 30 * 60 * 1000)
 
     return () => clearInterval(interval)
   }, [isTracking])
 
-  // Formats duration for the main timer display (HH:MM:SS)
   const formatTimerDisplay = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
@@ -267,14 +196,11 @@ export default function Component() {
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-
-
   const handleTimeIn = async () => {
     if (buttonCooldown) return
     
     const now = new Date()
     
-    // Check work hours (6AM - 10PM)
     if (now.getHours() < 6 || now.getHours() >= 22) {
       toast.error("Cannot start timer", {
         description: (
@@ -292,7 +218,6 @@ export default function Component() {
       return
     }
     
-    // Check daily hours limit (16 hours including lunch)
     const today = now.toLocaleDateString("en-CA")
     const todayEntries = timeEntries.filter(entry => entry.date === today)
     const todayDuration = todayEntries.reduce((total, entry) => total + entry.duration, 0)
@@ -368,20 +293,24 @@ export default function Component() {
   }
 
   const handleTimeOut = async () => {
-    if (!currentSessionStart || buttonCooldown) return
+    if (!currentSessionStart || buttonCooldown || isStoppingRef.current) return
     
+    isStoppingRef.current = true
     setButtonCooldown(true)
-    setTimeout(() => setButtonCooldown(false), 3000)
+    setIsTracking(false)
+    
+    const sessionStart = currentSessionStart
+    const sessionTime = currentSessionTime
+    setCurrentSessionStart(null)
+    setCurrentSessionTime(0)
 
     const now = new Date()
-    const duration = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
-
-    // Use current location for manual stop
-    let currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
+    const duration = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
+    const currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
     
     const newEntry = {
       date: now.toLocaleDateString("en-CA"),
-      timeIn: currentSessionStart.toLocaleTimeString("en-US", {
+      timeIn: sessionStart.toLocaleTimeString("en-US", {
         hour12: true,
         hour: "2-digit",
         minute: "2-digit",
@@ -397,12 +326,8 @@ export default function Component() {
 
     try {
       await timeEntriesService.createEntry(newEntry)
-      await loadTimeEntries() // Reload entries from backend
-    } catch (error) {
-      console.error('Failed to save time entry:', error)
-    }
-
-    try {
+      await loadTimeEntries()
+      
       const token = localStorage.getItem('authToken')
       await fetch('/api/session', {
         method: 'POST',
@@ -416,7 +341,7 @@ export default function Component() {
       toast.success("Stopped working", {
         description: (
           <div>
-            <div>Session duration: {formatTimerDisplay(currentSessionTime)}</div>
+            <div>Session duration: {formatTimerDisplay(sessionTime)}</div>
             <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
               <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
                 animation: 'progress 3s linear forwards'
@@ -431,21 +356,18 @@ export default function Component() {
       toast.error("Failed to stop timer", {
         description: "Please try again"
       })
+    } finally {
+      isStoppingRef.current = false
+      setTimeout(() => setButtonCooldown(false), 3000)
     }
-
-    setIsTracking(false)
-    setCurrentSessionStart(null)
-    setCurrentSessionTime(0)
   }
 
   const getTodayEntries = () => {
     const today = new Date().toLocaleDateString("en-CA")
-    
-    // Get individual entries for today (not consolidated)
     const todayConsolidated = timeEntries.find((entry) => entry.date === today)
     const individualEntries = (todayConsolidated?.entries || []).map(entry => ({
       ...entry,
-      date: today // Ensure each entry has the date field
+      date: today
     }))
     
     // If currently tracking, add live session to the list
