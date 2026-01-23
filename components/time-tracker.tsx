@@ -129,14 +129,32 @@ export default function Component() {
   const checkActiveSession = async () => {
     try {
       const token = localStorage.getItem('authToken')
+      if (!token) {
+        setLoading(false)
+        return
+      }
+      
       const response = await fetch('/api/session', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
+      
+      if (!response.ok) {
+        console.error('Session check failed:', response.status)
+        setLoading(false)
+        return
+      }
+      
       const data = await response.json()
       
       if (data.isTracking && data.sessionStart) {
+        const sessionStart = new Date(data.sessionStart)
         setIsTracking(true)
-        setCurrentSessionStart(new Date(data.sessionStart))
+        setCurrentSessionStart(sessionStart)
+        
+        // Calculate initial elapsed time
+        const now = new Date()
+        const elapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
+        setCurrentSessionTime(elapsed)
       }
     } catch (error) {
       console.error('Failed to check session:', error)
@@ -325,18 +343,21 @@ export default function Component() {
     }
 
     try {
+      // Save entry first (most important)
       await timeEntriesService.createEntry(newEntry)
-      await loadTimeEntries()
       
+      // Stop session in background (less critical)
       const token = localStorage.getItem('authToken')
-      await fetch('/api/session', {
+      fetch('/api/session', {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ action: 'stop' })
-      })
+      }).catch(err => console.error('Session stop failed:', err))
+      
+      await loadTimeEntries()
       
       toast.success("Stopped working", {
         description: (
@@ -356,6 +377,10 @@ export default function Component() {
       toast.error("Failed to stop timer", {
         description: "Please try again"
       })
+      // Restore state on failure
+      setIsTracking(true)
+      setCurrentSessionStart(sessionStart)
+      setCurrentSessionTime(sessionTime)
     } finally {
       isStoppingRef.current = false
       setTimeout(() => setButtonCooldown(false), 3000)
