@@ -38,6 +38,16 @@ export default function Component() {
     loadTimeEntries()
     checkActiveSession()
     getUserLocation()
+    
+    // Cross-tab sync: listen for session changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'sessionSync') {
+        checkActiveSession()
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
   const getUserLocation = () => {
@@ -278,6 +288,10 @@ export default function Component() {
         setIsTracking(true)
         setCurrentSessionStart(now)
         setCurrentSessionTime(0)
+        
+        // Notify other tabs
+        localStorage.setItem('sessionSync', Date.now().toString())
+        
         toast.success("Started working", {
           description: (
             <div>
@@ -356,6 +370,9 @@ export default function Component() {
         },
         body: JSON.stringify({ action: 'stop' })
       }).catch(err => console.error('Session stop failed:', err))
+      
+      // Notify other tabs
+      localStorage.setItem('sessionSync', Date.now().toString())
       
       await loadTimeEntries()
       
