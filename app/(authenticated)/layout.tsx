@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 import Sidebar from "../../components/sidebar"
 import { authService } from "@/lib/auth"
 import { isAdminOnlyPage, hasAdminAccess } from "@/lib/permissions"
@@ -31,10 +32,11 @@ export default function AuthenticatedLayout({
     }
   }, [router, pathname])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     authService.removeToken()
     localStorage.removeItem("loggedInUsername")
     localStorage.removeItem("userRole")
+    await signOut({ redirect: false })
     router.push("/")
   }
 

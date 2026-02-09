@@ -3,11 +3,11 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
+import AuthProvider from '@/components/auth-provider'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'Time Tracker',
+  description: 'Track your time efficiently',
 }
 
 export default function RootLayout({
@@ -27,9 +27,11 @@ html {
         `}</style>
       </head>
       <body suppressHydrationWarning>
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   )

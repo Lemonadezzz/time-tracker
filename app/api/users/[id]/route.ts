@@ -22,15 +22,31 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { username, email, role } = await request.json()
+    const body = await request.json()
+    const { username, email, role, departmentId } = body
     const userId = params.id
+
+    const db = await getDatabase()
+    const users = db.collection('users')
+
+    // If only updating department (bulk operation)
+    if (departmentId !== undefined && !username && !email) {
+      const updateOp = departmentId === null || departmentId === '' 
+        ? { $unset: { departmentId: '' } }
+        : { $set: { departmentId, updatedAt: new Date() } }
+      
+      const result = await users.updateOne({ _id: new ObjectId(userId) }, updateOp)
+      
+      if (result.matchedCount === 0) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      
+      return NextResponse.json({ success: true })
+    }
 
     if (!username || !email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
-
-    const db = await getDatabase()
-    const users = db.collection('users')
 
     // Check if another user has the same username or email
     const existingUser = await users.findOne({ 
@@ -45,16 +61,26 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Update user
+    const updateData: any = { 
+      username, 
+      email, 
+      role: role || 'user',
+      updatedAt: new Date()
+    }
+    
+    if (departmentId !== undefined) {
+      if (departmentId === null || departmentId === '') {
+        updateData.$unset = { departmentId: '' }
+      } else {
+        updateData.departmentId = departmentId
+      }
+    }
+
     const result = await users.updateOne(
       { _id: new ObjectId(userId) },
-      { 
-        $set: { 
-          username, 
-          email, 
-          role: role || 'user',
-          updatedAt: new Date()
-        } 
-      }
+      departmentId === null || departmentId === '' 
+        ? { $set: updateData, $unset: { departmentId: '' } }
+        : { $set: updateData }
     )
 
     if (result.matchedCount === 0) {

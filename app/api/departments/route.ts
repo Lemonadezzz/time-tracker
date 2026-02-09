@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-import bcrypt from 'bcryptjs'
 import { getDatabase } from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
 
 async function getUserFromToken(request: NextRequest) {
   const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -23,15 +23,14 @@ export async function GET(request: NextRequest) {
     }
 
     const db = await getDatabase()
-
-    const allUsers = await db.collection('users')
-      .find({}, { projection: { password: 0 } })
-      .sort({ createdAt: -1 })
+    const departments = await db.collection('departments')
+      .find({})
+      .sort({ name: 1 })
       .toArray()
 
-    return NextResponse.json({ users: allUsers })
+    return NextResponse.json({ departments })
   } catch (error) {
-    console.error('Users API error:', error)
+    console.error('Departments API error:', error)
     return NextResponse.json({ 
       error: 'Database error', 
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -46,50 +45,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { username, email, password, role, departmentId } = await request.json()
+    const { name, description } = await request.json()
 
-    if (!username || !email || !password) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!name) {
+      return NextResponse.json({ error: 'Department name is required' }, { status: 400 })
     }
 
     const db = await getDatabase()
-    const users = db.collection('users')
+    const departments = db.collection('departments')
 
-    // Check if user already exists
-    const existingUser = await users.findOne({ 
-      $or: [{ username }, { email }] 
+    const existingDept = await departments.findOne({ name })
+    if (existingDept) {
+      return NextResponse.json({ error: 'Department already exists' }, { status: 400 })
+    }
+
+    const result = await departments.insertOne({
+      name,
+      description: description || '',
+      createdAt: new Date(),
+      updatedAt: new Date()
     })
-    
-    if (existingUser) {
-      return NextResponse.json({ error: 'User already exists' }, { status: 400 })
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
-
-    // Create user
-    const userData: any = {
-      username,
-      email,
-      password: hashedPassword,
-      role: role || 'user',
-      createdAt: new Date()
-    }
-    
-    if (departmentId) {
-      userData.departmentId = departmentId
-    }
-
-    const result = await users.insertOne(userData)
 
     return NextResponse.json({ 
       success: true, 
-      userId: result.insertedId 
+      departmentId: result.insertedId 
     })
   } catch (error) {
-    console.error('Create user error:', error)
+    console.error('Create department error:', error)
     return NextResponse.json({ 
-      error: 'Failed to create user', 
+      error: 'Failed to create department', 
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
