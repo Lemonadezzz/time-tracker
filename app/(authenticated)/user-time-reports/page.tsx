@@ -25,13 +25,10 @@ interface TimeEntry {
 
 interface TimeLog {
   _id: string
-  date: string
-  timeIn: string
-  timeOut: string | null
-  duration: number
+  action: 'time_in' | 'time_out'
+  timestamp: string
   location: string
   ipAddress: string
-  createdAt: string
 }
 
 export default function UserTimeReportsPage() {
@@ -128,11 +125,11 @@ export default function UserTimeReportsPage() {
       if (logsDateRange.start) searchParams.set('startDate', logsDateRange.start)
       if (logsDateRange.end) searchParams.set('endDate', logsDateRange.end)
       
-      const response = await fetch(`/api/time-logs?${searchParams}`, {
+      const response = await fetch(`/api/action-logs?${searchParams}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await response.json()
-      setTimeLogs(data.entries || [])
+      setTimeLogs(data.logs || [])
       setLogsTotalPages(data.pagination.totalPages)
     } catch (error) {
       console.error('Failed to load time logs:', error)
@@ -450,10 +447,8 @@ export default function UserTimeReportsPage() {
                           <table className="min-w-full divide-y divide-border">
                             <thead className="bg-muted/50">
                               <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Time In</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Time Out</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Duration</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Action</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date & Time</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">IP Address</th>
                               </tr>
@@ -461,10 +456,22 @@ export default function UserTimeReportsPage() {
                             <tbody className="bg-background divide-y divide-border">
                               {timeLogs.map((log) => (
                                 <tr key={log._id} className="hover:bg-muted/50">
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm">{new Date(log.date).toLocaleDateString()}</td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm">{log.timeIn}</td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm">{log.timeOut || '-'}</td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">{formatDuration(log.duration)}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <Badge variant={log.action === 'time_in' ? 'default' : 'secondary'} className="text-xs">
+                                      {log.action === 'time_in' ? 'Time In' : 'Time Out'}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                    {new Date(log.timestamp).toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      second: '2-digit',
+                                      hour12: true
+                                    })}
+                                  </td>
                                   <td className="px-4 py-3 text-sm truncate max-w-xs">{log.location}</td>
                                   <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">{log.ipAddress}</td>
                                 </tr>

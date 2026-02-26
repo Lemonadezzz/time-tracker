@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
     const { action, location } = await request.json()
     const db = await getDatabase()
     const sessions = db.collection('sessions')
+    const actionLogs = db.collection('action_logs')
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
 
     if (action === 'start') {
       // End any existing active session
@@ -67,6 +69,16 @@ export async function POST(request: NextRequest) {
         createdAt: now
       })
 
+      // Log time in action
+      await actionLogs.insertOne({
+        userId: user.userId.toString(),
+        action: 'time_in',
+        timestamp: now,
+        location: location || 'Location Unavailable',
+        ipAddress,
+        username: user.username
+      })
+
       // Log timer start
       const logs = db.collection('system_logs')
       await logs.insertOne({
@@ -74,16 +86,28 @@ export async function POST(request: NextRequest) {
         details: `Started time tracking session`,
         username: user.username,
         timestamp: new Date(),
-        ip: request.headers.get('x-forwarded-for') || 'unknown'
+        ip: ipAddress
       })
 
       return NextResponse.json({ success: true, sessionStart: now })
     } else if (action === 'stop') {
+      const now = new Date()
+      
       // End active session
       await sessions.updateMany(
         { userId: new ObjectId(user.userId), isActive: true },
-        { $set: { isActive: false, endTime: new Date() } }
+        { $set: { isActive: false, endTime: now } }
       )
+
+      // Log time out action
+      await actionLogs.insertOne({
+        userId: user.userId.toString(),
+        action: 'time_out',
+        timestamp: now,
+        location: location || 'Location Unavailable',
+        ipAddress,
+        username: user.username
+      })
 
       // Log timer stop
       const logs = db.collection('system_logs')
@@ -91,8 +115,8 @@ export async function POST(request: NextRequest) {
         action: 'timer_stop',
         details: `Stopped time tracking session`,
         username: user.username,
-        timestamp: new Date(),
-        ip: request.headers.get('x-forwarded-for') || 'unknown'
+        timestamp: now,
+        ip: ipAddress
       })
 
       return NextResponse.json({ success: true })

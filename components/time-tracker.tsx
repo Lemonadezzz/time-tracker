@@ -346,7 +346,7 @@ export default function Component() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ action: 'stop' })
+        body: JSON.stringify({ action: 'stop', location: currentLocation })
       }).catch(err => console.error('Session stop failed:', err))
       
       // Notify other tabs
