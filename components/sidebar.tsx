@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, ChevronLeft, ChevronRight, Timer, FileText, BarChart3, Settings, Users, TrendingUp, Moon, Sun, MoreVertical, X, Info } from "lucide-react"
+import { LogOut, User, ChevronLeft, ChevronRight, Timer, FileText, BarChart3, Settings, Users, TrendingUp, Moon, Sun, MoreVertical, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/lib/theme"
 
@@ -20,7 +20,6 @@ const allNavigation = [
   { name: "Users & Departments", href: "/team", icon: Users, roles: ['admin', 'developer'] },
   { name: "Team Reports", href: "/team-reports", icon: TrendingUp, roles: ['admin', 'developer'] },
   { name: "Settings", href: "/settings", icon: Settings, roles: ['admin', 'user', 'developer'] },
-  { name: "About", href: "/about", icon: Info, roles: ['admin', 'user', 'developer'] },
 ]
 
 export default function Sidebar({ username, onLogout }: SidebarProps) {
@@ -97,9 +96,9 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
-              <span className="text-background font-bold text-sm">TS</span>
+              <span className="text-background font-bold text-sm">V2</span>
             </div>
-            <h1 className="text-lg font-semibold text-foreground">TimeSurgeon</h1>
+            <h1 className="text-lg font-semibold text-foreground">Obelisk</h1>
           </div>
           <Button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -181,14 +180,14 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
-                <span className="text-background font-bold text-sm">TS</span>
+                <span className="text-background font-bold text-sm">V2</span>
               </div>
-              <h1 className="text-sm font-semibold text-muted-foreground">TimeSurgeon</h1>
+              <h1 className="text-sm font-semibold text-muted-foreground">Obelisk</h1>
             </div>
           ) : (
             <div className="flex justify-center">
               <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
-                <span className="text-background font-bold text-sm">TS</span>
+                <span className="text-background font-bold text-sm">V2</span>
               </div>
             </div>
           )}

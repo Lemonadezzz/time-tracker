@@ -246,28 +246,6 @@ export default function Component() {
       return
     }
     
-    const today = now.toLocaleDateString("en-CA")
-    const todayEntries = timeEntries.filter(entry => entry.date === today)
-    const todayDuration = todayEntries.reduce((total, entry) => total + entry.duration, 0)
-    const maxDuration = 16 * 60 * 60 // 16 hours in seconds
-    
-    if (todayDuration >= maxDuration) {
-      toast.error("Daily limit reached", {
-        description: (
-          <div>
-            <div>Maximum 16 hours per day (including lunch)</div>
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
-                animation: 'progress 3s linear forwards'
-              }}></div>
-            </div>
-          </div>
-        ),
-        duration: 3000
-      })
-      return
-    }
-    
     setButtonCooldown(true)
     setTimeout(() => setButtonCooldown(false), 3000)
     
