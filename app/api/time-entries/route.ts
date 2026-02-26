@@ -170,6 +170,8 @@ export async function POST(request: NextRequest) {
     const db = await getDatabase()
 
     const now = new Date()
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
+    
     const result = await db.collection('timeentries').insertOne({
       userId: user.userId.toString(),
       date,
@@ -177,6 +179,7 @@ export async function POST(request: NextRequest) {
       timeOut,
       duration,
       location: location || 'Location Unavailable',
+      ipAddress,
       createdAt: now,
       updatedAt: now
     })

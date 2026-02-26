@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, ChevronLeft, ChevronRight, Filter, Clock, Download } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Calendar, ChevronLeft, ChevronRight, Filter, Clock, Download, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { Toaster } from "sonner"
 import TimeTable from "@/components/time-table"
@@ -22,16 +23,42 @@ interface TimeEntry {
   duration: number
 }
 
+interface TimeLog {
+  _id: string
+  date: string
+  timeIn: string
+  timeOut: string | null
+  duration: number
+  location: string
+  ipAddress: string
+  createdAt: string
+}
+
 export default function UserTimeReportsPage() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
+  const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [logsPage, setLogsPage] = useState(1)
+  const [logsTotalPages, setLogsTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [logsLoading, setLogsLoading] = useState(true)
   const [entriesPerPage, setEntriesPerPage] = useState(30)
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest')
+  const [logsSortOrder, setLogsSortOrder] = useState<'latest' | 'oldest'>('latest')
 
   // Default to current month
   const [dateRange, setDateRange] = useState(() => {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    return {
+      start: startOfMonth.toLocaleDateString("en-CA"),
+      end: endOfMonth.toLocaleDateString("en-CA")
+    }
+  })
+
+  const [logsDateRange, setLogsDateRange] = useState(() => {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -66,6 +93,10 @@ export default function UserTimeReportsPage() {
     loadTimeEntries()
   }, [currentPage, entriesPerPage, sortOrder])
 
+  useEffect(() => {
+    loadTimeLogs()
+  }, [logsPage, entriesPerPage, logsSortOrder, logsDateRange])
+
   const loadTimeEntries = async () => {
     try {
       setLoading(true)
@@ -86,8 +117,36 @@ export default function UserTimeReportsPage() {
     }
   }
 
+  const loadTimeLogs = async () => {
+    try {
+      setLogsLoading(true)
+      const token = localStorage.getItem('authToken')
+      const searchParams = new URLSearchParams()
+      searchParams.set('page', logsPage.toString())
+      searchParams.set('limit', entriesPerPage.toString())
+      searchParams.set('sort', logsSortOrder)
+      if (logsDateRange.start) searchParams.set('startDate', logsDateRange.start)
+      if (logsDateRange.end) searchParams.set('endDate', logsDateRange.end)
+      
+      const response = await fetch(`/api/time-logs?${searchParams}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      setTimeLogs(data.entries || [])
+      setLogsTotalPages(data.pagination.totalPages)
+    } catch (error) {
+      console.error('Failed to load time logs:', error)
+    } finally {
+      setLogsLoading(false)
+    }
+  }
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
+  }
+
+  const handleLogsPageChange = (page: number) => {
+    setLogsPage(page)
   }
 
   const handlePageSizeChange = (size: string) => {
@@ -166,6 +225,13 @@ export default function UserTimeReportsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 md:px-6 flex-1 flex flex-col">
+            <Tabs defaultValue="timesheets" className="flex-1 flex flex-col">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="timesheets">My Timesheets</TabsTrigger>
+                <TabsTrigger value="logs">My Logs</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="timesheets" className="flex-1 flex flex-col mt-0">
             <div className="flex-1 flex flex-col">
               {/* Date Range Filter */}
               <div className="flex flex-col md:flex-row items-center gap-3 p-3 bg-muted/20 rounded-lg">
@@ -296,6 +362,169 @@ export default function UserTimeReportsPage() {
                 )}
               </div>
             </div>
+              </TabsContent>
+              
+              <TabsContent value="logs" className="flex-1 flex flex-col mt-0">
+                <div className="flex-1 flex flex-col">
+                  {/* Date Range Filter for Logs */}
+                  <div className="flex flex-col md:flex-row items-center gap-3 p-3 bg-muted/20 rounded-lg mb-3">
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4" />
+                      <span className="text-sm font-medium">Filter by date:</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={logsDateRange.start}
+                        onChange={(e) => setLogsDateRange(prev => ({ ...prev, start: e.target.value }))}
+                        className="w-auto"
+                        placeholder="Start date"
+                      />
+                      <span className="text-sm text-muted-foreground">to</span>
+                      <Input
+                        type="date"
+                        value={logsDateRange.end}
+                        onChange={(e) => setLogsDateRange(prev => ({ ...prev, end: e.target.value }))}
+                        className="w-auto"
+                        placeholder="End date"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={logsSortOrder} onValueChange={(value: 'latest' | 'oldest') => setLogsSortOrder(value)}>
+                        <SelectTrigger className="w-24 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="latest">Latest</SelectItem>
+                          <SelectItem value="oldest">Oldest</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setLogsDateRange({
+                          start: new Date().toLocaleDateString("en-CA"),
+                          end: new Date().toLocaleDateString("en-CA")
+                        })
+                        setLogsPage(1)
+                      }}>
+                        Today
+                      </Button>
+                      {(() => {
+                        const now = new Date()
+                        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString("en-CA")
+                        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString("en-CA")
+                        const isDefault = logsDateRange.start === currentMonthStart && logsDateRange.end === currentMonthEnd
+                        
+                        return !isDefault && (
+                          <Button variant="outline" size="sm" onClick={() => {
+                            const now = new Date()
+                            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+                            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+                            setLogsDateRange({
+                              start: startOfMonth.toLocaleDateString("en-CA"),
+                              end: endOfMonth.toLocaleDateString("en-CA")
+                            })
+                            setLogsSortOrder('latest')
+                            setLogsPage(1)
+                          }}>
+                            Clear
+                          </Button>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 min-h-0">
+                    {logsLoading ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Clock className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                        <p>Loading time logs...</p>
+                      </div>
+                    ) : timeLogs.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No time logs for this period</p>
+                      </div>
+                    ) : (
+                      <div className="border rounded-lg overflow-hidden">
+                        <div className="h-[calc(100vh-300px)] overflow-y-auto overflow-x-auto">
+                          <table className="min-w-full divide-y divide-border">
+                            <thead className="bg-muted/50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Time In</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Time Out</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Duration</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">IP Address</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-background divide-y divide-border">
+                              {timeLogs.map((log) => (
+                                <tr key={log._id} className="hover:bg-muted/50">
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm">{new Date(log.date).toLocaleDateString()}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm">{log.timeIn}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm">{log.timeOut || '-'}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">{formatDuration(log.duration)}</td>
+                                  <td className="px-4 py-3 text-sm truncate max-w-xs">{log.location}</td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">{log.ipAddress}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-3 mt-3 border-t flex-shrink-0">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>Show</span>
+                      <Select value={entriesPerPage.toString()} onValueChange={handlePageSizeChange}>
+                        <SelectTrigger className="w-20 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="30">30</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span>entries</span>
+                    </div>
+                    
+                    {logsTotalPages > 1 && (
+                      <div className="flex items-center gap-3">
+                        <p className="text-sm text-muted-foreground">
+                          Page {logsPage} of {logsTotalPages}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleLogsPageChange(logsPage - 1)}
+                            disabled={logsPage === 1}
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                            <span className="hidden md:inline">Previous</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleLogsPageChange(logsPage + 1)}
+                            disabled={logsPage === logsTotalPages}
+                          >
+                            <span className="hidden md:inline">Next</span>
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
