@@ -38,6 +38,6 @@ export const exportTimeEntriesToExcel = (
   
   const ws = XLSX.utils.json_to_sheet(exportData)
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, includeUser ? 'Team Reports' : 'Time Entries')
+  XLSX.utils.book_append_sheet(wb, ws, includeUser ? 'Team Timesheets' : 'Time Entries')
   XLSX.writeFile(wb, `${filename}-${new Date().toISOString().split('T')[0]}.xlsx`)
 }

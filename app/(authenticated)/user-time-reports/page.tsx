@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, ChevronLeft, ChevronRight, Filter, Clock, Download, FileText } from "lucide-react"
+import { Calendar, ChevronLeft, ChevronRight, Filter, Clock, Download, FileText, X } from "lucide-react"
 import { toast } from "sonner"
 import { Toaster } from "sonner"
 import TimeTable from "@/components/time-table"
@@ -43,6 +43,12 @@ export default function UserTimeReportsPage() {
   const [entriesPerPage, setEntriesPerPage] = useState(30)
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest')
   const [logsSortOrder, setLogsSortOrder] = useState<'latest' | 'oldest'>('latest')
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('timesheetsActiveTab') || 'timesheets'
+    }
+    return 'timesheets'
+  })
 
   // Default to current month
   const [dateRange, setDateRange] = useState(() => {
@@ -209,6 +215,76 @@ export default function UserTimeReportsPage() {
     }
   }
 
+  const exportLogsToExcel = () => {
+    if (!timeLogs || timeLogs.length === 0) {
+      toast.error("Export failed", {
+        description: (
+          <div>
+            <div>No data to export</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
+      return
+    }
+
+    try {
+      const logsData = timeLogs.map(log => ({
+        Action: log.action === 'time_in' ? 'Time In' : 'Time Out',
+        'Date & Time': new Date(log.timestamp).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        }),
+        Location: log.location,
+        'IP Address': log.ipAddress
+      }))
+      
+      const XLSX = require('xlsx')
+      const ws = XLSX.utils.json_to_sheet(logsData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Clock Logs')
+      XLSX.writeFile(wb, `clock-logs-${new Date().toISOString().split('T')[0]}.xlsx`)
+      
+      toast.success("CSV exported", {
+        description: (
+          <div>
+            <div>Clock logs downloaded successfully</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
+    } catch (error) {
+      toast.error("Export failed", {
+        description: (
+          <div>
+            <div>Failed to download CSV file</div>
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
+                animation: 'progress 3s linear forwards'
+              }}></div>
+            </div>
+          </div>
+        ),
+        duration: 3000
+      })
+    }
+  }
+
   const totalTime = getTotalTime()
 
   return (
@@ -222,10 +298,13 @@ export default function UserTimeReportsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 md:px-6 flex-1 flex flex-col">
-            <Tabs defaultValue="timesheets" className="flex-1 flex flex-col">
+            <Tabs value={activeTab} onValueChange={(value) => {
+              setActiveTab(value)
+              localStorage.setItem('timesheetsActiveTab', value)
+            }} className="flex-1 flex flex-col">
               <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="timesheets">My Timesheets</TabsTrigger>
-                <TabsTrigger value="logs">My Logs</TabsTrigger>
+                <TabsTrigger value="timesheets">Daily Records</TabsTrigger>
+                <TabsTrigger value="logs">Clock Logs</TabsTrigger>
               </TabsList>
               
               <TabsContent value="timesheets" className="flex-1 flex flex-col mt-0">
@@ -272,6 +351,10 @@ export default function UserTimeReportsPage() {
                   }}>
                     Today
                   </Button>
+                  <Button variant="outline" size="sm" onClick={exportToExcel}>
+                    <Download className="w-4 h-4 mr-1" />
+                    Export
+                  </Button>
                   {(() => {
                     const now = new Date()
                     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString("en-CA")
@@ -279,7 +362,7 @@ export default function UserTimeReportsPage() {
                     const isDefault = dateRange.start === currentMonthStart && dateRange.end === currentMonthEnd
                     
                     return !isDefault && (
-                      <Button variant="outline" size="sm" onClick={() => {
+                      <Button variant="destructive" size="sm" onClick={() => {
                         const now = new Date()
                         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
                         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -290,14 +373,11 @@ export default function UserTimeReportsPage() {
                         setSortOrder('latest')
                         setCurrentPage(1)
                       }}>
+                        <X className="w-4 h-4 mr-1" />
                         Clear
                       </Button>
                     )
                   })()}
-                  <Button variant="outline" size="sm" onClick={exportToExcel}>
-                    <Download className="w-4 h-4 mr-1" />
-                    Export
-                  </Button>
                 </div>
               </div>
               
@@ -405,6 +485,10 @@ export default function UserTimeReportsPage() {
                       }}>
                         Today
                       </Button>
+                      <Button variant="outline" size="sm" onClick={exportLogsToExcel}>
+                        <Download className="w-4 h-4 mr-1" />
+                        Export
+                      </Button>
                       {(() => {
                         const now = new Date()
                         const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString("en-CA")
@@ -412,7 +496,7 @@ export default function UserTimeReportsPage() {
                         const isDefault = logsDateRange.start === currentMonthStart && logsDateRange.end === currentMonthEnd
                         
                         return !isDefault && (
-                          <Button variant="outline" size="sm" onClick={() => {
+                          <Button variant="destructive" size="sm" onClick={() => {
                             const now = new Date()
                             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
                             const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -423,6 +507,7 @@ export default function UserTimeReportsPage() {
                             setLogsSortOrder('latest')
                             setLogsPage(1)
                           }}>
+                            <X className="w-4 h-4 mr-1" />
                             Clear
                           </Button>
                         )

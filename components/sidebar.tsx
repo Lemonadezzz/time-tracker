@@ -18,7 +18,7 @@ const allNavigation = [
   { name: "My Timesheets", href: "/user-time-reports", icon: FileText, roles: ['admin', 'user', 'developer'] },
   { name: "Dashboard", href: "/dashboard", icon: BarChart3, roles: ['admin', 'developer'] },
   { name: "Users & Departments", href: "/team", icon: Users, roles: ['admin', 'developer'] },
-  { name: "Team Reports", href: "/team-reports", icon: TrendingUp, roles: ['admin', 'developer'] },
+  { name: "Team Timesheets", href: "/team-reports", icon: TrendingUp, roles: ['admin', 'developer'] },
   { name: "Settings", href: "/settings", icon: Settings, roles: ['admin', 'user', 'developer'] },
 ]
 
