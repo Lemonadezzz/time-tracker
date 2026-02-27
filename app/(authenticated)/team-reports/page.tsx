@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, ChevronLeft, ChevronRight, Filter, Clock, Download, FileText } from "lucide-react"
+import { Users, ChevronLeft, ChevronRight, Filter, Clock, Download, FileText, X } from "lucide-react"
 import { toast } from "sonner"
 import { Toaster } from "sonner"
 import TeamTimeTable from "@/components/team-time-table"
@@ -571,7 +571,8 @@ export default function TeamReportsPage() {
                     ) : (
                       <div className="border rounded-lg overflow-hidden">
                         <div className="h-[calc(100vh-300px)] overflow-y-auto overflow-x-auto">
-                          <table className="min-w-full divide-y divide-border">
+                          {/* Desktop Table */}
+                          <table className="hidden md:table min-w-full divide-y divide-border">
                             <thead className="bg-muted/50">
                               <tr>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">User</th>
@@ -607,6 +608,29 @@ export default function TeamReportsPage() {
                               ))}
                             </tbody>
                           </table>
+                          {/* Mobile List */}
+                          <div className="md:hidden divide-y divide-border">
+                            {teamLogs.map((log) => (
+                              <div key={log._id} className="p-3 hover:bg-muted/50">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="font-medium text-sm">{log.username}</div>
+                                  <Badge variant={log.action === 'time_in' ? 'default' : 'secondary'} className="text-xs">
+                                    {log.action === 'time_in' ? 'Time In' : 'Time Out'}
+                                  </Badge>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {new Date(log.timestamp).toLocaleString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}

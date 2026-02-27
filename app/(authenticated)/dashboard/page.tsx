@@ -84,15 +84,15 @@ export default function DashboardPage() {
                 <p>No users are currently tracking time</p>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {activeSessions.map((session, index) => {
                   const duration = calculateDuration(session.startTime)
                   const startTime = new Date(session.startTime)
                   
                   return (
-                    <div key={index} className="grid grid-cols-3 gap-4 items-center py-2 border-b last:border-b-0">
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{session.username}</p>
+                    <div key={index} className="flex flex-col md:grid md:grid-cols-3 gap-2 md:gap-4 items-start md:items-center py-3 md:py-2 border-b last:border-b-0">
+                      <div className="min-w-0 w-full md:w-auto">
+                        <p className="font-medium text-sm md:text-base truncate">{session.username}</p>
                         <p className="text-xs text-muted-foreground">
                           Started {startTime.toLocaleTimeString("en-US", {
                             hour12: true,
@@ -101,16 +101,16 @@ export default function DashboardPage() {
                           })}
                         </p>
                       </div>
-                      <div className="min-w-0 text-center flex flex-col justify-center">
-                        <p className="text-xs">
+                      <div className="min-w-0 w-full md:w-auto md:text-center flex flex-col justify-center">
+                        <p className="text-xs md:text-sm">
                           📍 {session.location ? session.location.split(', ')[0] : 'Location'}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
                           {session.location ? session.location.split(', ')[1] || 'Unavailable' : 'Unavailable'}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-mono text-sm">{formatDuration(duration)}</p>
+                      <div className="w-full md:w-auto md:text-right">
+                        <p className="font-mono text-base md:text-sm">{formatDuration(duration)}</p>
                         <p className="text-xs text-muted-foreground">elapsed</p>
                       </div>
                     </div>

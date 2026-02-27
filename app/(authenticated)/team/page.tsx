@@ -340,89 +340,86 @@ export default function TeamPage() {
           </TabsList>
 
           <TabsContent value="users" className="space-y-4">
-            <div className="flex justify-end">
-              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <UserPlus className="w-4 h-4" />
-                    Add User
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New User</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Username</Label>
-                      <Input
-                        placeholder="Username"
-                        value={newUser.username}
-                        onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label>Email</Label>
-                      <Input
-                        placeholder="Email"
-                        type="email"
-                        value={newUser.email}
-                        onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label>Password</Label>
-                      <Input
-                        placeholder="Password"
-                        type="password"
-                        value={newUser.password}
-                        onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label>Role</Label>
-                      <Select value={newUser.role} onValueChange={(value: 'admin' | 'user' | 'developer') => setNewUser(prev => ({ ...prev, role: value }))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="developer">Developer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Department</Label>
-                      <Select value={newUser.departmentId || 'none'} onValueChange={(value) => setNewUser(prev => ({ ...prev, departmentId: value === 'none' ? '' : value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No Department</SelectItem>
-                          {departments.map(dept => (
-                            <SelectItem key={dept._id} value={dept._id}>{dept.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={handleAddUser} className="flex-1">Add User</Button>
-                      <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
             <Card>
               <CardHeader className="pb-3 md:pb-6">
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 md:w-5 md:h-5" />
                     <span className="text-base md:text-xl">Team Members</span>
+                    <Badge variant="secondary" className="text-xs">{users.length} members</Badge>
                   </div>
-                  <Badge variant="secondary">{users.length} members</Badge>
+                  <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-2">
+                        <UserPlus className="w-4 h-4" />
+                        <span className="hidden md:inline">Add User</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add New User</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Username</Label>
+                          <Input
+                            placeholder="Username"
+                            value={newUser.username}
+                            onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label>Email</Label>
+                          <Input
+                            placeholder="Email"
+                            type="email"
+                            value={newUser.email}
+                            onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label>Password</Label>
+                          <Input
+                            placeholder="Password"
+                            type="password"
+                            value={newUser.password}
+                            onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label>Role</Label>
+                          <Select value={newUser.role} onValueChange={(value: 'admin' | 'user' | 'developer') => setNewUser(prev => ({ ...prev, role: value }))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="developer">Developer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Department</Label>
+                          <Select value={newUser.departmentId || 'none'} onValueChange={(value) => setNewUser(prev => ({ ...prev, departmentId: value === 'none' ? '' : value }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select department" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No Department</SelectItem>
+                              {departments.map(dept => (
+                                <SelectItem key={dept._id} value={dept._id}>{dept.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button onClick={handleAddUser} className="flex-1">Add User</Button>
+                          <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-3 md:px-6">
@@ -508,52 +505,49 @@ export default function TeamPage() {
           </TabsContent>
 
           <TabsContent value="departments" className="space-y-4">
-            <div className="flex justify-end">
-              <Dialog open={showAddDeptDialog} onOpenChange={setShowAddDeptDialog}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Add Department
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Department</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Department Name</Label>
-                      <Input
-                        placeholder="Department name"
-                        value={newDept.name}
-                        onChange={(e) => setNewDept(prev => ({ ...prev, name: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label>Description</Label>
-                      <Input
-                        placeholder="Description (optional)"
-                        value={newDept.description}
-                        onChange={(e) => setNewDept(prev => ({ ...prev, description: e.target.value }))}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={handleAddDept} className="flex-1">Add Department</Button>
-                      <Button variant="outline" onClick={() => setShowAddDeptDialog(false)}>Cancel</Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
             <Card>
               <CardHeader className="pb-3 md:pb-6">
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 md:w-5 md:h-5" />
                     <span className="text-base md:text-xl">Departments</span>
+                    <Badge variant="secondary" className="text-xs">{departments.length} departments</Badge>
                   </div>
-                  <Badge variant="secondary">{departments.length} departments</Badge>
+                  <Dialog open={showAddDeptDialog} onOpenChange={setShowAddDeptDialog}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-2">
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden md:inline">Add Department</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add New Department</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Department Name</Label>
+                          <Input
+                            placeholder="Department name"
+                            value={newDept.name}
+                            onChange={(e) => setNewDept(prev => ({ ...prev, name: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label>Description</Label>
+                          <Input
+                            placeholder="Description (optional)"
+                            value={newDept.description}
+                            onChange={(e) => setNewDept(prev => ({ ...prev, description: e.target.value }))}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button onClick={handleAddDept} className="flex-1">Add Department</Button>
+                          <Button variant="outline" onClick={() => setShowAddDeptDialog(false)}>Cancel</Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-3 md:px-6">

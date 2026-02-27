@@ -536,23 +536,49 @@ export default function Component() {
           </CardContent>
         </Card>
 
-        {/* Timeline - Hidden on mobile, shown when tracking or has entries */}
-        {(todayEntries.length > 0 || isTracking) && (
-          <Card className="hidden md:block">
-            <CardHeader className="pb-3 md:pb-6">
-              <CardTitle className="flex items-center gap-2 text-base md:text-xl">
-                <Calendar className="w-4 h-4 md:w-5 md:h-5" />
-                {isTracking && todayEntries.length === 1 && todayEntries[0]._id === 'live-session' 
-                  ? 'Currently Working' 
-                  : 'Worked Today'
-                }
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 md:px-6">
-              <DayTimeline entries={todayEntries.map(e => ({...e, id: e._id || e.date + e.timeIn}))} />
-            </CardContent>
-          </Card>
-        )}
+        {/* Timeline - Mobile: Show compact version, Desktop: Full timeline */}
+        <Card>
+          <CardHeader className="pb-3 md:pb-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-xl">
+              <Calendar className="w-4 h-4 md:w-5 md:h-5" />
+              {isTracking && todayEntries.length === 1 && todayEntries[0]._id === 'live-session' 
+                ? 'Currently Working' 
+                : 'Worked Today'
+              }
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 md:px-6">
+            {todayEntries.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No time entries for today</p>
+              </div>
+            ) : (
+              <>
+                {/* Mobile: Compact list view */}
+                <div className="md:hidden space-y-2">
+                  {todayEntries.map((entry, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-2 bg-muted/30 rounded">
+                      <div>
+                        <div className="text-sm font-medium">{entry.timeIn}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {entry.timeOut ? `to ${entry.timeOut}` : 'In progress'}
+                        </div>
+                      </div>
+                      <div className="text-sm font-mono">
+                        {Math.floor(entry.duration / 3600)}h {Math.floor((entry.duration % 3600) / 60)}m
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop: Timeline view */}
+                <div className="hidden md:block">
+                  <DayTimeline entries={todayEntries.map(e => ({...e, id: e._id || e.date + e.timeIn}))} />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
