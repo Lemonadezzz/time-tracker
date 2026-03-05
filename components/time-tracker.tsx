@@ -38,14 +38,14 @@ export default function Component() {
     loadTimeEntries()
     checkActiveSession()
     getUserLocation()
-    
+
     // Cross-tab sync: listen for session changes
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'sessionSync') {
         checkActiveSession()
       }
     }
-    
+
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
@@ -65,25 +65,25 @@ export default function Component() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords
-          
+
           // Get location
           const locationResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
           const locationData = await locationResponse.json()
           const localityData = locationData.locality || 'Unknown Locality'
           const regionData = locationData.principalSubdivision || 'Unknown Region'
-          
+
           setLocality(localityData)
           setPrincipalSubdivision(regionData)
-          
+
           // Get weather
           const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=celsius`)
           const weatherData = await weatherResponse.json()
           const temp = Math.round(weatherData.current_weather.temperature)
           const weatherCode = weatherData.current_weather.weathercode
           const weatherEmoji = getWeatherEmoji(weatherCode)
-          
+
           setLocation(`${weatherEmoji} ${temp}°C — ${localityData}, ${regionData}`)
-          
+
           toast.success("Location updated", {
             description: (
               <div>
@@ -143,24 +143,24 @@ export default function Component() {
         setLoading(false)
         return
       }
-      
+
       const response = await fetch('/api/session', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
-      
+
       if (!response.ok) {
         console.error('Session check failed:', response.status)
         setLoading(false)
         return
       }
-      
+
       const data = await response.json()
-      
+
       if (data.isTracking && data.sessionStart) {
         const sessionStart = new Date(data.sessionStart)
         setIsTracking(true)
         setCurrentSessionStart(sessionStart)
-        
+
         // Calculate initial elapsed time
         const now = new Date()
         const elapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
@@ -191,6 +191,23 @@ export default function Component() {
         const now = new Date()
         const diff = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
         setCurrentSessionTime(diff)
+
+        // If computer slept through midnight, force a reload so the backend can safely auto-close it retroactively
+        if (now.toLocaleDateString('en-CA') !== currentSessionStart.toLocaleDateString('en-CA') && !isStoppingRef.current) {
+          window.location.reload()
+          return
+        }
+
+        // Auto-stop at 11:59 PM to prevent crossing to the next day
+        if (now.getHours() === 23 && now.getMinutes() >= 59 && !isStoppingRef.current) {
+          const stopBtn = document.getElementById('stop-tracking-btn')
+          if (stopBtn) {
+            toast.info("Session auto-closing", {
+              description: "Timers are automatically stopped at 11:59 PM."
+            })
+            stopBtn.click()
+          }
+        }
       }, 1000)
     }
 
@@ -209,7 +226,7 @@ export default function Component() {
 
   useEffect(() => {
     if (!isTracking) return
-    
+
     const interval = setInterval(() => {
       setCurrentTime(new Date())
     }, 30 * 60 * 1000)
@@ -226,9 +243,9 @@ export default function Component() {
 
   const handleTimeIn = async () => {
     if (buttonCooldown) return
-    
+
     const now = new Date()
-    
+
     if (now.getHours() < 6 || now.getHours() >= 22) {
       toast.error("Cannot start timer", {
         description: (
@@ -245,31 +262,31 @@ export default function Component() {
       })
       return
     }
-    
+
     setButtonCooldown(true)
     setTimeout(() => setButtonCooldown(false), 3000)
-    
+
     try {
       const token = localStorage.getItem('authToken')
       const response = await fetch('/api/session', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ action: 'start', location: locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable' })
       })
       const data = await response.json()
-      
+
       if (data.success) {
         const now = new Date(data.sessionStart)
         setIsTracking(true)
         setCurrentSessionStart(now)
         setCurrentSessionTime(0)
-        
+
         // Notify other tabs
         localStorage.setItem('sessionSync', Date.now().toString())
-        
+
         toast.success("Started working", {
           description: (
             <div>
@@ -304,11 +321,11 @@ export default function Component() {
 
   const handleTimeOut = async () => {
     if (!currentSessionStart || buttonCooldown || isStoppingRef.current) return
-    
+
     isStoppingRef.current = true
     setButtonCooldown(true)
     setIsTracking(false)
-    
+
     const sessionStart = currentSessionStart
     const sessionTime = currentSessionTime
     setCurrentSessionStart(null)
@@ -317,7 +334,7 @@ export default function Component() {
     const now = new Date()
     const duration = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
     const currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
-    
+
     const newEntry = {
       date: now.toLocaleDateString("en-CA"),
       timeIn: sessionStart.toLocaleTimeString("en-US", {
@@ -337,23 +354,23 @@ export default function Component() {
     try {
       // Save entry first (most important)
       await timeEntriesService.createEntry(newEntry)
-      
+
       // Stop session in background (less critical)
       const token = localStorage.getItem('authToken')
       fetch('/api/session', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ action: 'stop', location: currentLocation })
       }).catch(err => console.error('Session stop failed:', err))
-      
+
       // Notify other tabs
       localStorage.setItem('sessionSync', Date.now().toString())
-      
+
       await loadTimeEntries()
-      
+
       toast.success("Stopped working", {
         description: (
           <div>
@@ -389,7 +406,7 @@ export default function Component() {
       ...entry,
       date: today
     }))
-    
+
     // If currently tracking, add live session to the list
     if (isTracking && currentSessionStart) {
       const liveEntry = {
@@ -405,7 +422,7 @@ export default function Component() {
       }
       return [...individualEntries, liveEntry]
     }
-    
+
     return individualEntries
   }
 
@@ -497,9 +514,9 @@ export default function Component() {
                     </Button>
                   ) : !isTracking ? (
                     <div className="relative">
-                      <Button 
-                        onClick={handleTimeIn} 
-                        size="lg" 
+                      <Button
+                        onClick={handleTimeIn}
+                        size="lg"
                         className="gap-2 rounded-full w-20 h-20 md:w-24 md:h-24 p-0 cursor-pointer relative overflow-hidden"
                         disabled={buttonCooldown}
                       >
@@ -515,6 +532,7 @@ export default function Component() {
                   ) : (
                     <div className="relative">
                       <Button
+                        id="stop-tracking-btn"
                         onClick={handleTimeOut}
                         size="lg"
                         className="gap-2 rounded-full w-20 h-20 md:w-24 md:h-24 p-0 cursor-pointer relative overflow-hidden bg-red-600 hover:bg-red-700 text-white"
@@ -541,8 +559,8 @@ export default function Component() {
           <CardHeader className="pb-3 md:pb-6">
             <CardTitle className="flex items-center gap-2 text-base md:text-xl">
               <Calendar className="w-4 h-4 md:w-5 md:h-5" />
-              {isTracking && todayEntries.length === 1 && todayEntries[0]._id === 'live-session' 
-                ? 'Currently Working' 
+              {isTracking && todayEntries.length === 1 && todayEntries[0]._id === 'live-session'
+                ? 'Currently Working'
                 : 'Worked Today'
               }
             </CardTitle>
@@ -573,7 +591,7 @@ export default function Component() {
                 </div>
                 {/* Desktop: Timeline view */}
                 <div className="hidden md:block">
-                  <DayTimeline entries={todayEntries.map(e => ({...e, id: e._id || e.date + e.timeIn}))} />
+                  <DayTimeline entries={todayEntries.map(e => ({ ...e, id: e._id || e.date + e.timeIn }))} />
                 </div>
               </>
             )}

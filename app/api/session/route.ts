@@ -25,12 +25,53 @@ export async function GET(request: NextRequest) {
     const db = await getDatabase()
     const sessions = db.collection('sessions')
 
-    const activeSession = await sessions.findOne({ 
+    const activeSession = await sessions.findOne({
       userId: new ObjectId(user.userId),
-      isActive: true 
+      isActive: true
     })
 
-    return NextResponse.json({ 
+    if (activeSession) {
+      const sessionDate = new Date(activeSession.startTime)
+      const now = new Date()
+      // If session is from a previous day, auto-close it at 11:59 PM of that day
+      if (sessionDate.toLocaleDateString('en-CA') !== now.toLocaleDateString('en-CA')) {
+        const autoEndTime = new Date(sessionDate)
+        autoEndTime.setHours(23, 59, 59, 999)
+        const duration = Math.floor((autoEndTime.getTime() - sessionDate.getTime()) / 1000)
+
+        // Auto-close session entry on previous day
+        await db.collection('timeentries').insertOne({
+          userId: user.userId.toString(),
+          date: sessionDate.toLocaleDateString('en-CA'),
+          timeIn: sessionDate.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
+          timeOut: "11:59 PM",
+          duration,
+          location: activeSession.location || 'Location Unavailable',
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown',
+          createdAt: autoEndTime,
+          updatedAt: autoEndTime,
+        })
+
+        await db.collection('action_logs').insertOne({
+          userId: user.userId.toString(),
+          action: 'time_out',
+          timestamp: autoEndTime,
+          location: activeSession.location || 'Location Unavailable',
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown',
+          username: user.username,
+          note: 'Auto-closed at midnight'
+        })
+
+        await sessions.updateOne(
+          { _id: activeSession._id },
+          { $set: { isActive: false, endTime: autoEndTime } }
+        )
+
+        return NextResponse.json({ isTracking: false, sessionStart: null })
+      }
+    }
+
+    return NextResponse.json({
       isTracking: !!activeSession,
       sessionStart: activeSession?.startTime || null
     })
@@ -92,7 +133,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, sessionStart: now })
     } else if (action === 'stop') {
       const now = new Date()
-      
+
       // End active session
       await sessions.updateMany(
         { userId: new ObjectId(user.userId), isActive: true },

@@ -245,8 +245,7 @@ export default function UserTimeReportsPage() {
           second: '2-digit',
           hour12: true
         }),
-        Location: log.location,
-        'IP Address': log.ipAddress
+        Location: log.location
       }))
       
       const XLSX = require('xlsx')
@@ -530,13 +529,12 @@ export default function UserTimeReportsPage() {
                       <div className="border rounded-lg overflow-hidden">
                         <div className="h-[calc(100vh-300px)] overflow-y-auto overflow-x-auto">
                           {/* Desktop Table */}
-                          <table className="hidden md:table min-w-full divide-y divide-border">
+                          <table className="hidden md:table w-full table-fixed">
                             <thead className="bg-muted/50">
                               <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Action</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date & Time</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">IP Address</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[15%]">Action</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[30%]">Date & Time</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[55%]">Location</th>
                               </tr>
                             </thead>
                             <tbody className="bg-background divide-y divide-border">
@@ -558,8 +556,7 @@ export default function UserTimeReportsPage() {
                                       hour12: true
                                     })}
                                   </td>
-                                  <td className="px-4 py-3 text-sm truncate max-w-xs">{log.location}</td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-mono">{log.ipAddress}</td>
+                                  <td className="px-4 py-3 text-sm truncate">{log.location}</td>
                                 </tr>
                               ))}
                             </tbody>
