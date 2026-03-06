@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { ObjectId } from 'mongodb'
 import { getDatabase } from '@/lib/mongodb'
+import { hashIpAddress } from '@/lib/ipHasher'
 
 async function getUserFromToken(request: NextRequest) {
   const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
           timeOut: "11:59 PM",
           duration,
           location: activeSession.location || 'Location Unavailable',
-          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown',
+          ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
           createdAt: autoEndTime,
           updatedAt: autoEndTime,
         })
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
           action: 'time_out',
           timestamp: autoEndTime,
           location: activeSession.location || 'Location Unavailable',
-          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown',
+          ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
           username: user.username,
           note: 'Auto-closed at midnight'
         })
@@ -103,7 +104,8 @@ export async function POST(request: NextRequest) {
     const db = await getDatabase()
     const sessions = db.collection('sessions')
     const actionLogs = db.collection('action_logs')
-    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
+    const rawIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
+    const ipAddress = hashIpAddress(rawIp)
 
     if (action === 'start') {
       // End any existing active session

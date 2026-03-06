@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { getDatabase } from '@/lib/mongodb'
+import { hashIpAddress } from '@/lib/ipHasher'
 import { ObjectId } from 'mongodb'
 
 async function getUserFromToken(request: NextRequest) {
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       {
         $group: {
           _id: '$date',
-          entries: { 
+          entries: {
             $push: {
               _id: '$_id',
               timeIn: '$timeIn',
@@ -84,13 +85,13 @@ export async function GET(request: NextRequest) {
     // Process consolidated entries
     const processedEntries = entries.map(dayGroup => {
       const validEntries = dayGroup.entries.filter(entry => entry.timeIn && entry.timeOut)
-      
+
       if (validEntries.length === 0) {
         // Find the latest available location (not "Location Unavailable")
         const latestLocation = dayGroup.entries
           .filter(entry => entry.location && entry.location !== 'Location Unavailable')
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.location || 'Location Unavailable'
-          
+
         return {
           _id: dayGroup.firstEntry._id,
           date: dayGroup._id,
@@ -118,10 +119,10 @@ export async function GET(request: NextRequest) {
 
       const earliestTimeIn = sortedEntries[0].timeIn
       const latestTimeOut = sortedEntries[sortedEntries.length - 1].timeOut
-      
+
       // Calculate total duration (sum of all individual durations)
       const totalDuration = validEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0)
-      
+
       // Find the latest available location (not "Location Unavailable")
       const latestLocation = dayGroup.entries
         .filter(entry => entry.location && entry.location !== 'Location Unavailable')
@@ -139,7 +140,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       entries: processedEntries,
       pagination: {
         currentPage: page,
@@ -151,8 +152,8 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Time entries error:', error)
-    return NextResponse.json({ 
-      error: 'Database error', 
+    return NextResponse.json({
+      error: 'Database error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
@@ -170,8 +171,9 @@ export async function POST(request: NextRequest) {
     const db = await getDatabase()
 
     const now = new Date()
-    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
-    
+    const rawIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
+    const ipAddress = hashIpAddress(rawIp)
+
     const result = await db.collection('timeentries').insertOne({
       userId: user.userId.toString(),
       date,
@@ -184,8 +186,8 @@ export async function POST(request: NextRequest) {
       updatedAt: now
     })
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       entry: { _id: result.insertedId, date, timeIn, timeOut, duration }
     })
   } catch (error) {

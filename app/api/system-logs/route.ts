@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { getDatabase } from '@/lib/mongodb'
+import { hashIpAddress } from '@/lib/ipHasher'
 
 async function getUserFromToken(request: NextRequest) {
   const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
       details,
       username: username || user.username,
       timestamp: new Date(),
-      ip: request.headers.get('x-forwarded-for') || 'unknown'
+      ip: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown')
     })
 
     return NextResponse.json({ success: true })

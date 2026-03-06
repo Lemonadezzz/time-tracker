@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { getDatabase } from '@/lib/mongodb'
+import { hashIpAddress } from '@/lib/ipHasher'
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,18 +38,18 @@ export async function POST(request: NextRequest) {
       details: `User logged in successfully`,
       username: user.username,
       timestamp: new Date(),
-      ip: request.headers.get('x-forwarded-for') || 'unknown'
+      ip: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown')
     })
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       user: { username: user.username, role: user.role || 'user' },
-      token 
+      token
     })
   } catch (error) {
     console.error('Login error:', error)
-    return NextResponse.json({ 
-      error: 'Database connection failed', 
+    return NextResponse.json({
+      error: 'Database connection failed',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
