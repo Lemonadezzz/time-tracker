@@ -6,8 +6,8 @@ import { ThemeProvider } from '@/lib/theme'
 import AuthProvider from '@/components/auth-provider'
 
 export const metadata: Metadata = {
-  title: 'Time Tracker',
-  description: 'Track your time efficiently',
+  title: 'obelisk',
+  description: 'Track your time efficiently with Obelisk',
 }
 
 export default function RootLayout({
