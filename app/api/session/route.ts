@@ -33,17 +33,29 @@ export async function GET(request: NextRequest) {
     if (activeSession) {
       const sessionDate = new Date(activeSession.startTime)
       const now = new Date()
+      // Use client timezone if available, otherwise fallback to server time
+      const tz = request.headers.get('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone
+
+      const sessionDateString = sessionDate.toLocaleDateString('en-CA', { timeZone: tz })
+      const nowDateString = now.toLocaleDateString('en-CA', { timeZone: tz })
+
       // If session is from a previous day, auto-close it at 11:59 PM of that day
-      if (sessionDate.toLocaleDateString('en-CA') !== now.toLocaleDateString('en-CA')) {
-        const autoEndTime = new Date(sessionDate)
-        autoEndTime.setHours(23, 59, 59, 999)
-        const duration = Math.floor((autoEndTime.getTime() - sessionDate.getTime()) / 1000)
+      if (sessionDateString !== nowDateString) {
+
+        // Use a simple calculation to get seconds until 11:59:59 PM in the user's timezone
+        const localTimeStr = sessionDate.toLocaleString('en-US', { timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        const [hours, minutes, seconds] = localTimeStr.split(':').map(Number)
+        // seconds from the session start time until midnight that same day
+        const secondsUntilMidnight = (23 - hours) * 3600 + (59 - minutes) * 60 + (59 - seconds)
+        const autoEndTime = new Date(sessionDate.getTime() + secondsUntilMidnight * 1000)
+
+        const duration = secondsUntilMidnight
 
         // Auto-close session entry on previous day
         await db.collection('timeentries').insertOne({
           userId: user.userId.toString(),
-          date: sessionDate.toLocaleDateString('en-CA'),
-          timeIn: sessionDate.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
+          date: sessionDateString,
+          timeIn: sessionDate.toLocaleTimeString("en-US", { timeZone: tz, hour12: true, hour: "2-digit", minute: "2-digit" }),
           timeOut: "11:59 PM",
           duration,
           location: activeSession.location || 'Location Unavailable',

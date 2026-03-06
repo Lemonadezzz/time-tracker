@@ -65,11 +65,11 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
         setMobileMenuOpen(false)
       }
     }
-    
+
     if (mobileMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
@@ -98,7 +98,7 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
             <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
               <span className="text-background font-bold text-sm">V2</span>
             </div>
-            <h1 className="text-lg font-semibold text-foreground">Obelisk</h1>
+            <h1 className="text-lg font-semibold text-foreground">obelisk</h1>
           </div>
           <Button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -140,10 +140,10 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
               </div>
               <div className="flex items-center justify-between px-3">
                 <span className="text-sm text-muted-foreground">Theme</span>
-                <Button 
+                <Button
                   onClick={() => mounted && setTheme(theme === "dark" ? "light" : "dark")}
-                  variant="ghost" 
-                  size="sm" 
+                  variant="ghost"
+                  size="sm"
                   className="w-8 h-8 p-0"
                 >
                   {mounted && theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -166,15 +166,15 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
           sidebarCollapsed ? "w-16" : "w-64"
         )}
       >
-      <Button
-        onClick={toggleSidebar}
-        variant="ghost"
-        size="sm"
-        className="hidden md:flex absolute -right-3 top-6 z-10 w-6 h-6 p-0 rounded-full border bg-background shadow-md hover:bg-accent"
-        title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        {sidebarCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-      </Button>
+        <Button
+          onClick={toggleSidebar}
+          variant="ghost"
+          size="sm"
+          className="hidden md:flex absolute -right-3 top-6 z-10 w-6 h-6 p-0 rounded-full border bg-background shadow-md hover:bg-accent"
+          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {sidebarCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+        </Button>
 
         <div className="p-4 border-b">
           {!sidebarCollapsed ? (
@@ -182,7 +182,7 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
               <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
                 <span className="text-background font-bold text-sm">V2</span>
               </div>
-              <h1 className="text-sm font-semibold text-muted-foreground">Obelisk</h1>
+              <h1 className="text-sm font-semibold text-muted-foreground">obelisk</h1>
             </div>
           ) : (
             <div className="flex justify-center">
@@ -224,11 +224,11 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
                 <User className="w-4 h-4 text-muted-foreground" />
               </div>
               <div className="flex justify-center">
-                <Button 
+                <Button
                   onClick={() => mounted && setTheme(theme === "dark" ? "light" : "dark")}
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-8 h-8 p-0" 
+                  variant="ghost"
+                  size="sm"
+                  className="w-8 h-8 p-0"
                   title="Toggle theme"
                 >
                   {mounted && theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -245,11 +245,11 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
                   <User className="w-4 h-4" />
                   <span className="truncate">{username}</span>
                 </div>
-                <Button 
+                <Button
                   onClick={() => mounted && setTheme(theme === "dark" ? "light" : "dark")}
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-8 h-8 p-0" 
+                  variant="ghost"
+                  size="sm"
+                  className="w-8 h-8 p-0"
                   title="Toggle theme"
                 >
                   {mounted && theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -262,7 +262,7 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
             </>
           )}
         </div>
-    </div>
+      </div>
     </>
   )
 }

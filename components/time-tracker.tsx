@@ -145,7 +145,10 @@ export default function Component() {
       }
 
       const response = await fetch('/api/session', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
       })
 
       if (!response.ok) {
@@ -272,7 +275,8 @@ export default function Component() {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         body: JSON.stringify({ action: 'start', location: locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable' })
       })
@@ -361,7 +365,8 @@ export default function Component() {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         body: JSON.stringify({ action: 'stop', location: currentLocation })
       }).catch(err => console.error('Session stop failed:', err))
