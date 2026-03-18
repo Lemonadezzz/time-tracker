@@ -8,6 +8,12 @@ interface TimeEntry {
   timeIn: string // HH:MM AM/PM
   timeOut: string | null // HH:MM AM/PM
   duration: number // in seconds
+  isOnBreak?: boolean // For live sessions
+  breakPeriods?: Array<{
+    startTime: string
+    endTime: string
+    duration: number
+  }>
 }
 
 interface DayTimelineProps {
@@ -147,28 +153,77 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
           const width = (clippedEndMinutes - clippedStartMinutes) * PIXELS_PER_MINUTE
 
           return (
-            <div
-              key={entry.id}
-              className="absolute bg-green-500/30 rounded-sm border border-green-600/50"
-              style={{
-                left: `${leftPosition}px`,
-                width: `${width}px`,
-                height: `${BAR_HEIGHT}px`, // Fixed height for the bar
-                top: `${HOUR_MARKER_HEIGHT + 10}px`, // Position below hour labels with some padding
-              }}
-              title={`Time In: ${formatTime(entry.timeIn)}, Time Out: ${formatTime(entry.timeOut)}, Duration: ${(() => {
-                const hours = Math.floor(entry.duration / 3600)
-                const minutes = Math.floor((entry.duration % 3600) / 60)
-                return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-              })()}`}
-            >
-              <span className="sr-only">
-                Time In: {formatTime(entry.timeIn)}, Time Out: {formatTime(entry.timeOut)}, Duration: {(() => {
+            <div key={entry.id}>
+              {/* Main work period */}
+              <div
+                className="absolute bg-green-500/30 rounded-sm border border-green-600/50"
+                style={{
+                  left: `${leftPosition}px`,
+                  width: `${width}px`,
+                  height: `${BAR_HEIGHT}px`,
+                  top: `${HOUR_MARKER_HEIGHT + 10}px`,
+                }}
+                title={`Time In: ${formatTime(entry.timeIn)}, Time Out: ${formatTime(entry.timeOut)}, Duration: ${(() => {
                   const hours = Math.floor(entry.duration / 3600)
                   const minutes = Math.floor((entry.duration % 3600) / 60)
                   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-                })()} 
-              </span>
+                })()}`}
+              >
+                <span className="sr-only">
+                  Time In: {formatTime(entry.timeIn)}, Time Out: {formatTime(entry.timeOut)}, Duration: {(() => {
+                    const hours = Math.floor(entry.duration / 3600)
+                    const minutes = Math.floor((entry.duration % 3600) / 60)
+                    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+                  })()} 
+                </span>
+              </div>
+              
+              {/* Break periods overlay */}
+              {entry.breakPeriods?.map((breakPeriod, breakIndex) => {
+                try {
+                  const breakStartDate = new Date(breakPeriod.startTime)
+                  const breakEndDate = new Date(breakPeriod.endTime)
+                  
+                  // Validate dates
+                  if (isNaN(breakStartDate.getTime()) || isNaN(breakEndDate.getTime())) {
+                    return null
+                  }
+                  
+                  // Calculate break start and end minutes from 6 AM
+                  const breakStartMinutes = (breakStartDate.getHours() - START_HOUR) * MINUTES_PER_HOUR + breakStartDate.getMinutes()
+                  const breakEndMinutes = (breakEndDate.getHours() - START_HOUR) * MINUTES_PER_HOUR + breakEndDate.getMinutes()
+                  
+                  // Clip to timeline bounds
+                  const clippedBreakStart = Math.max(0, breakStartMinutes)
+                  const clippedBreakEnd = Math.min(TOTAL_MINUTES, breakEndMinutes)
+                  
+                  if (clippedBreakStart >= clippedBreakEnd) return null
+                  
+                  const breakLeft = clippedBreakStart * PIXELS_PER_MINUTE
+                  const breakWidth = (clippedBreakEnd - clippedBreakStart) * PIXELS_PER_MINUTE
+                  
+                  return (
+                    <div
+                      key={`break-${breakIndex}`}
+                      className="absolute bg-blue-500/60 rounded-sm border border-blue-600"
+                      style={{
+                        left: `${breakLeft}px`,
+                        width: `${breakWidth}px`,
+                        height: `${BAR_HEIGHT}px`,
+                        top: `${HOUR_MARKER_HEIGHT + 10}px`,
+                        zIndex: 10
+                      }}
+                      title={`Break: ${breakStartDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - ${breakEndDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} (${Math.floor(breakPeriod.duration / 60)}m)`}
+                    >
+                      <span className="sr-only">
+                        Break: {breakStartDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - {breakEndDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} ({Math.floor(breakPeriod.duration / 60)}m)
+                      </span>
+                    </div>
+                  )
+                } catch (error) {
+                  return null
+                }
+              })}
             </div>
           )
         })}
@@ -195,20 +250,26 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
           const leftPosition = clippedStartMinutes * PIXELS_PER_MINUTE
           const width = (clippedEndMinutes - clippedStartMinutes) * PIXELS_PER_MINUTE
 
+          // Use blue color if on break, green if actively working
+          const isOnBreak = entry.isOnBreak
+          const bgColor = isOnBreak ? 'bg-blue-500/50' : 'bg-green-500/50'
+          const borderColor = isOnBreak ? 'border-blue-600' : 'border-green-600'
+          const statusText = isOnBreak ? 'On break since' : 'Currently tracking since'
+
           return (
             <div
               key={entry.id}
-              className="absolute bg-green-500/50 rounded-sm border border-green-600 animate-pulse"
+              className={`absolute ${bgColor} rounded-sm border ${borderColor} animate-pulse`}
               style={{
                 left: `${leftPosition}px`,
                 width: `${width}px`,
                 height: `${BAR_HEIGHT}px`,
                 top: `${HOUR_MARKER_HEIGHT + 10}px`,
               }}
-              title={`Currently tracking since ${formatTime(entry.timeIn)}`}
+              title={`${statusText} ${formatTime(entry.timeIn)}`}
             >
               <span className="sr-only">
-                Currently tracking since {formatTime(entry.timeIn)}
+                {statusText} {formatTime(entry.timeIn)}
               </span>
             </div>
           )

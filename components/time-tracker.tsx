@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 
-import { Play, Square, Calendar, Clock } from "lucide-react"
+import { Play, Calendar, Clock, Coffee } from "lucide-react"
 import DayTimeline from "./day-timeline"
 
 import { timeEntriesService } from "@/lib/timeEntries"
@@ -17,12 +17,19 @@ interface TimeEntry {
   timeOut: string | null // HH:MM AM/PM
   duration: number // in seconds
   location?: string // Location where time was tracked
+  breakPeriods?: Array<{
+    startTime: string
+    endTime: string
+    duration: number
+  }>
 }
 
 export default function Component() {
   const [isTracking, setIsTracking] = useState(false)
+  const [isOnBreak, setIsOnBreak] = useState(false)
   const [currentSessionStart, setCurrentSessionStart] = useState<Date | null>(null)
   const [currentSessionTime, setCurrentSessionTime] = useState(0)
+  const [pausedSessionTime, setPausedSessionTime] = useState(0) // Time when break started
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loading, setLoading] = useState(true)
@@ -30,6 +37,10 @@ export default function Component() {
   const [locality, setLocality] = useState<string>('')
   const [principalSubdivision, setPrincipalSubdivision] = useState<string>('')
   const [buttonCooldown, setButtonCooldown] = useState(false)
+  const [breakTimeRemaining, setBreakTimeRemaining] = useState(5400) // 1.5 hours in seconds
+  const [breakTimeUsed, setBreakTimeUsed] = useState(0)
+  const [breakStartTime, setBreakStartTime] = useState<Date | null>(null)
+  const [currentBreakDuration, setCurrentBreakDuration] = useState(0)
   const locationRequestedRef = useRef(false)
   const isStoppingRef = useRef(false)
 
@@ -152,7 +163,6 @@ export default function Component() {
       })
 
       if (!response.ok) {
-        console.error('Session check failed:', response.status)
         setLoading(false)
         return
       }
@@ -161,16 +171,47 @@ export default function Component() {
 
       if (data.isTracking && data.sessionStart) {
         const sessionStart = new Date(data.sessionStart)
-        setIsTracking(true)
-        setCurrentSessionStart(sessionStart)
-
-        // Calculate initial elapsed time
         const now = new Date()
-        const elapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
-        setCurrentSessionTime(elapsed)
+        
+        // Set session start and break tracking first
+        setCurrentSessionStart(sessionStart)
+        setBreakTimeRemaining(data.breakTimeRemaining || 0)
+        setBreakTimeUsed(data.breakTimeUsed || 0)
+        
+        if (data.isOnBreak && data.currentBreakStart) {
+          // Currently on break - calculate work time before break started
+          const breakStartTime = new Date(data.currentBreakStart)
+          const totalElapsedBeforeBreak = Math.floor((breakStartTime.getTime() - sessionStart.getTime()) / 1000)
+          const workTimeBeforeBreak = totalElapsedBeforeBreak - (data.breakTimeUsed || 0)
+          
+          setPausedSessionTime(Math.max(0, workTimeBeforeBreak))
+          setCurrentSessionTime(Math.max(0, workTimeBeforeBreak))
+          setBreakStartTime(breakStartTime)
+          setIsOnBreak(true)
+        } else {
+          // Not on break - calculate current work time
+          const totalElapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
+          const workTime = totalElapsed - (data.breakTimeUsed || 0)
+          setCurrentSessionTime(Math.max(0, workTime))
+          setPausedSessionTime(0)
+          setIsOnBreak(false)
+        }
+        
+        // Set tracking state last to trigger timer effect with all data ready
+        setIsTracking(true)
+
+        // Show auto-resume notification if applicable
+        if (data.autoResumed) {
+          toast.info("Break time limit reached", {
+            description: "Work automatically resumed after 1.5 hours of break time."
+          })
+        }
+      } else {
+        setBreakTimeRemaining(data.breakTimeRemaining || 5400)
+        setBreakTimeUsed(data.breakTimeUsed || 0)
       }
     } catch (error) {
-      console.error('Failed to check session:', error)
+      // Session check failed silently
     } finally {
       setLoading(false)
     }
@@ -181,35 +222,101 @@ export default function Component() {
       const { entries } = await timeEntriesService.getEntries()
       setTimeEntries(entries)
     } catch (error) {
-      console.error('Failed to load time entries:', error)
+      // Failed to load entries silently
     }
   }
 
-  // Timer effect
+  // Timer effect - Update every second when tracking
+  useEffect(() => {
+    if (!isTracking || !currentSessionStart) return
+
+    const calculateTime = () => {
+      if (isOnBreak) {
+        // During break, keep timer frozen at paused time
+        setCurrentSessionTime(pausedSessionTime)
+      } else {
+        // Not on break: calculate work time from session start minus break time
+        const now = new Date()
+        const totalElapsed = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
+        const workTime = totalElapsed - breakTimeUsed
+        setCurrentSessionTime(Math.max(0, workTime))
+      }
+
+      // If computer slept through midnight, force reload
+      const now = new Date()
+      if (now.toLocaleDateString('en-CA') !== currentSessionStart.toLocaleDateString('en-CA') && !isStoppingRef.current) {
+        window.location.reload()
+        return false
+      }
+
+      // Auto-stop at 11:59 PM
+      if (now.getHours() === 23 && now.getMinutes() >= 59 && !isStoppingRef.current) {
+        const stopBtn = document.getElementById('stop-tracking-btn')
+        if (stopBtn) {
+          toast.info("Session auto-closing", {
+            description: "Timers are automatically stopped at 11:59 PM."
+          })
+          stopBtn.click()
+        }
+        return false
+      }
+      return true
+    }
+
+    // Calculate immediately on mount/change
+    calculateTime()
+
+    // Then set up interval
+    const interval = setInterval(() => {
+      if (!calculateTime()) {
+        clearInterval(interval)
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isTracking, currentSessionStart, isOnBreak, breakTimeUsed, pausedSessionTime])
+
+  // Break time monitoring effect - reduced frequency to avoid API limits
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
 
-    if (isTracking && currentSessionStart) {
+    if (isTracking && isOnBreak && breakStartTime) {
+      // Update current break duration locally every second
       interval = setInterval(() => {
         const now = new Date()
-        const diff = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
-        setCurrentSessionTime(diff)
-
-        // If computer slept through midnight, force a reload so the backend can safely auto-close it retroactively
-        if (now.toLocaleDateString('en-CA') !== currentSessionStart.toLocaleDateString('en-CA') && !isStoppingRef.current) {
-          window.location.reload()
-          return
-        }
-
-        // Auto-stop at 11:59 PM to prevent crossing to the next day
-        if (now.getHours() === 23 && now.getMinutes() >= 59 && !isStoppingRef.current) {
-          const stopBtn = document.getElementById('stop-tracking-btn')
-          if (stopBtn) {
-            toast.info("Session auto-closing", {
-              description: "Timers are automatically stopped at 11:59 PM."
-            })
-            stopBtn.click()
+        const breakDuration = Math.floor((now.getTime() - breakStartTime.getTime()) / 1000)
+        setCurrentBreakDuration(breakDuration)
+        
+        // Check if we've hit the limit locally first
+        const totalBreakTime = breakTimeUsed + breakDuration
+        const maxBreakTime = 90 * 60 // 1.5 hours
+        
+        if (totalBreakTime >= maxBreakTime) {
+          // Auto-resume locally and then sync with server
+          setIsOnBreak(false)
+          setBreakStartTime(null)
+          setCurrentBreakDuration(0)
+          setBreakTimeUsed(maxBreakTime)
+          setBreakTimeRemaining(0)
+          // Resume from paused time
+          setCurrentSessionTime(pausedSessionTime)
+          
+          // Sync with server (fire and forget) - this will also log the break end
+          const token = localStorage.getItem('authToken')
+          if (token) {
+            fetch('/api/session', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ action: 'resume' })
+            }).catch(() => {})
           }
+          
+          toast.info("Break time limit reached", {
+            description: "Work automatically resumed after 1.5 hours of break time."
+          })
         }
       }, 1000)
     }
@@ -217,25 +324,15 @@ export default function Component() {
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [isTracking, currentSessionStart])
+  }, [isTracking, isOnBreak, breakStartTime, breakTimeUsed, pausedSessionTime])
 
+  // Update current time display
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date())
-    }, 60000) // Update every minute
-
+    }, 60000)
     return () => clearInterval(interval)
   }, [])
-
-  useEffect(() => {
-    if (!isTracking) return
-
-    const interval = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 30 * 60 * 1000)
-
-    return () => clearInterval(interval)
-  }, [isTracking])
 
   const formatTimerDisplay = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -283,10 +380,12 @@ export default function Component() {
       const data = await response.json()
 
       if (data.success) {
-        const now = new Date(data.sessionStart)
-        setIsTracking(true)
-        setCurrentSessionStart(now)
+        const sessionStartDate = new Date(data.sessionStart)
+        setCurrentSessionStart(sessionStartDate)
         setCurrentSessionTime(0)
+        setBreakTimeUsed(0)
+        setPausedSessionTime(0)
+        setIsTracking(true)
 
         // Notify other tabs
         localStorage.setItem('sessionSync', Date.now().toString())
@@ -306,7 +405,6 @@ export default function Component() {
         })
       }
     } catch (error) {
-      console.error('Failed to start session:', error)
       toast.error("Failed to start timer", {
         description: (
           <div>
@@ -323,12 +421,134 @@ export default function Component() {
     }
   }
 
+  const handleTakeBreak = async () => {
+    if (buttonCooldown || !isTracking) return
+    
+    if (breakTimeRemaining <= 0) {
+      toast.error("Break limit reached", {
+        description: "You've used your daily 1.5 hours of break time."
+      })
+      return
+    }
+    
+    setButtonCooldown(true)
+    setTimeout(() => setButtonCooldown(false), 3000)
+    
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch('/api/session', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'break' })
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        const now = new Date()
+        // Store current work time as paused time
+        setPausedSessionTime(currentSessionTime)
+        setIsOnBreak(true)
+        setBreakStartTime(now)
+        setCurrentBreakDuration(0)
+        setBreakTimeRemaining(data.breakTimeRemaining || 0)
+        
+        // Notify other tabs
+        localStorage.setItem('sessionSync', Date.now().toString())
+        
+        const remainingMinutes = Math.floor(data.breakTimeRemaining / 60)
+        toast.success("Break started", {
+          description: (
+            <div>
+              <div>Timer paused for break</div>
+              <div className="text-xs mt-1">{remainingMinutes} minutes remaining today</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-blue-500 h-1 rounded-full animate-[progress_2s_linear_forwards]" style={{
+                  animation: 'progress 2s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 2000
+        })
+      } else if (data.error === 'Daily break limit reached') {
+        toast.error("Break limit reached", {
+          description: "You've used your daily 1.5 hours of break time."
+        })
+      }
+    } catch (error) {
+      toast.error("Failed to start break", {
+        description: "Please try again"
+      })
+    }
+  }
+
+  const handleResumeWork = async () => {
+    if (buttonCooldown || !isTracking) return
+    
+    setButtonCooldown(true)
+    setTimeout(() => setButtonCooldown(false), 3000)
+    
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch('/api/session', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'resume' })
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        // Update break time tracking from server
+        const newBreakTimeUsed = data.breakTimeUsed || 0
+        setBreakTimeUsed(newBreakTimeUsed)
+        setBreakTimeRemaining(data.breakTimeRemaining || 0)
+        
+        // End break state
+        setIsOnBreak(false)
+        setBreakStartTime(null)
+        setCurrentBreakDuration(0)
+        
+        // Don't manually set currentSessionTime - let the timer effect calculate it
+        // based on the updated breakTimeUsed
+        
+        // Notify other tabs
+        localStorage.setItem('sessionSync', Date.now().toString())
+        
+        const remainingMinutes = Math.floor(data.breakTimeRemaining / 60)
+        toast.success("Work resumed", {
+          description: (
+            <div>
+              <div>Timer resumed from break</div>
+              <div className="text-xs mt-1">{remainingMinutes} minutes break time remaining today</div>
+              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+                <div className="bg-green-500 h-1 rounded-full animate-[progress_2s_linear_forwards]" style={{
+                  animation: 'progress 2s linear forwards'
+                }}></div>
+              </div>
+            </div>
+          ),
+          duration: 2000
+        })
+      }
+    } catch (error) {
+      toast.error("Failed to resume work", {
+        description: "Please try again"
+      })
+    }
+  }
   const handleTimeOut = async () => {
     if (!currentSessionStart || buttonCooldown || isStoppingRef.current) return
 
     isStoppingRef.current = true
     setButtonCooldown(true)
     setIsTracking(false)
+    setIsOnBreak(false) // Reset break state when stopping
 
     const sessionStart = currentSessionStart
     const sessionTime = currentSessionTime
@@ -338,6 +558,24 @@ export default function Component() {
     const now = new Date()
     const duration = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
     const currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
+
+    // Get break periods from the session
+    let breakPeriods: any[] = []
+    try {
+      const token = localStorage.getItem('authToken')
+      const sessionResponse = await fetch('/api/session', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      })
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json()
+        breakPeriods = sessionData.breakPeriods || []
+      }
+    } catch (error) {
+      // Failed to get break periods
+    }
 
     const newEntry = {
       date: now.toLocaleDateString("en-CA"),
@@ -353,6 +591,7 @@ export default function Component() {
       }),
       duration: duration,
       location: currentLocation,
+      breakPeriods: breakPeriods
     }
 
     try {
@@ -369,7 +608,7 @@ export default function Component() {
           'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         body: JSON.stringify({ action: 'stop', location: currentLocation })
-      }).catch(err => console.error('Session stop failed:', err))
+      }).catch(() => {})
 
       // Notify other tabs
       localStorage.setItem('sessionSync', Date.now().toString())
@@ -390,7 +629,6 @@ export default function Component() {
         duration: 3000
       })
     } catch (error) {
-      console.error('Failed to stop session:', error)
       toast.error("Failed to stop timer", {
         description: "Please try again"
       })
@@ -409,7 +647,8 @@ export default function Component() {
     const todayConsolidated = timeEntries.find((entry) => entry.date === today)
     const individualEntries = (todayConsolidated?.entries || []).map(entry => ({
       ...entry,
-      date: today
+      date: today,
+      breakPeriods: entry.breakPeriods || todayConsolidated?.breakPeriods || []
     }))
 
     // If currently tracking, add live session to the list
@@ -423,7 +662,9 @@ export default function Component() {
           minute: "2-digit",
         }),
         timeOut: null,
-        duration: currentSessionTime
+        duration: currentSessionTime,
+        isOnBreak: isOnBreak,
+        breakPeriods: [] // Live sessions don't have completed break periods yet
       }
       return [...individualEntries, liveEntry]
     }
@@ -479,14 +720,29 @@ export default function Component() {
                 </div>
                 {isTracking && currentSessionStart ? (
                   <div className="text-sm md:text-lg text-muted-foreground">
-                    Started at{" "}
-                    <span className="font-semibold text-primary">
-                      {currentSessionStart.toLocaleTimeString("en-US", {
-                        hour12: true,
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                    {isOnBreak && breakStartTime ? (
+                      <>
+                        Break started at{" "}
+                        <span className="font-semibold text-blue-600">
+                          {breakStartTime.toLocaleTimeString("en-US", {
+                            hour12: true,
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Started at{" "}
+                        <span className="font-semibold text-primary">
+                          {currentSessionStart.toLocaleTimeString("en-US", {
+                            hour12: true,
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="text-sm md:text-lg text-muted-foreground">Ready to start tracking</div>
@@ -507,8 +763,53 @@ export default function Component() {
                     </div>
                   )}
                   <div className="text-xs md:text-sm text-muted-foreground mt-1 md:mt-1">
-                    {loading ? "Loading..." : (isTracking ? "Elapsed Time" : "Session Time")}
+                    {loading ? "Loading..." : (
+                      isTracking ? (
+                        isOnBreak ? (
+                          <>
+                            On Break • {formatTimerDisplay(currentBreakDuration)} elapsed
+                          </>
+                        ) : (
+                          "Elapsed Time"
+                        )
+                      ) : (
+                        "Session Time"
+                      )
+                    )}
                   </div>
+                  
+                  {/* Take a Break / Resume Button */}
+                  {isTracking && (
+                    <div className="mt-3">
+                      {!isOnBreak ? (
+                        <Button
+                          onClick={handleTakeBreak}
+                          variant="outline"
+                          size="sm"
+                          className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300"
+                          disabled={buttonCooldown || breakTimeRemaining <= 0}
+                        >
+                          <Coffee className="w-4 h-4 mr-2" />
+                          {breakTimeRemaining <= 0 ? 'Break Limit Reached' : 'Take a Break'}
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={handleResumeWork}
+                          variant="outline"
+                          size="sm"
+                          className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:border-green-300"
+                          disabled={buttonCooldown}
+                        >
+                          <Play className="w-4 h-4 mr-2" />
+                          Resume Work
+                        </Button>
+                      )}
+                      {/* Break time remaining indicator */}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Break time: {Math.floor(breakTimeRemaining / 60)}m remaining today
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Timer Button */}

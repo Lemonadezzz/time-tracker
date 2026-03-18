@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     const matchConditions: any = { 
       userId: user.userId.toString(),
-      action: { $in: ['time_in', 'time_out'] }
+      action: { $in: ['time_in', 'time_out', 'break_start', 'break_end'] }
     }
     
     if (startDate && endDate) {
@@ -60,7 +60,9 @@ export async function GET(request: NextRequest) {
       action: log.action,
       timestamp: log.timestamp,
       location: log.location || 'Location Unavailable',
-      ipAddress: log.ipAddress || 'Unknown'
+      ipAddress: log.ipAddress || 'Unknown',
+      note: log.note || null,
+      duration: log.duration || null
     }))
 
     return NextResponse.json({ 

@@ -25,10 +25,12 @@ interface TimeEntry {
 
 interface TimeLog {
   _id: string
-  action: 'time_in' | 'time_out'
+  action: 'time_in' | 'time_out' | 'break_start' | 'break_end'
   timestamp: string
   location: string
   ipAddress: string
+  note?: string
+  duration?: number
 }
 
 export default function UserTimeReportsPage() {
@@ -235,7 +237,15 @@ export default function UserTimeReportsPage() {
 
     try {
       const logsData = timeLogs.map(log => ({
-        Action: log.action === 'time_in' ? 'Time In' : 'Time Out',
+        Action: (() => {
+          switch (log.action) {
+            case 'time_in': return 'Time In'
+            case 'time_out': return 'Time Out'
+            case 'break_start': return 'Break Start'
+            case 'break_end': return 'Break End'
+            default: return log.action
+          }
+        })(),
         'Date & Time': new Date(log.timestamp).toLocaleString('en-US', {
           month: 'short',
           day: 'numeric',
@@ -245,7 +255,9 @@ export default function UserTimeReportsPage() {
           second: '2-digit',
           hour12: true
         }),
-        Location: log.location
+        Location: log.location,
+        Note: log.note || '',
+        Duration: log.duration ? `${Math.floor(log.duration / 60)}m ${log.duration % 60}s` : ''
       }))
       
       const XLSX = require('xlsx')
@@ -532,17 +544,40 @@ export default function UserTimeReportsPage() {
                           <table className="hidden md:table w-full table-fixed">
                             <thead className="bg-muted/50">
                               <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[15%]">Action</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[30%]">Date & Time</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[55%]">Location</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[12%]">Action</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[25%]">Date & Time</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[35%]">Location</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-[28%]">Note</th>
                               </tr>
                             </thead>
                             <tbody className="bg-background divide-y divide-border">
                               {timeLogs.map((log) => (
                                 <tr key={log._id} className="hover:bg-muted/50">
                                   <td className="px-4 py-3 whitespace-nowrap">
-                                    <Badge variant={log.action === 'time_in' ? 'default' : 'secondary'} className="text-xs">
-                                      {log.action === 'time_in' ? 'Time In' : 'Time Out'}
+                                    <Badge 
+                                      variant={(() => {
+                                        switch (log.action) {
+                                          case 'time_in': return 'default'
+                                          case 'time_out': return 'secondary'
+                                          case 'break_start': return 'outline'
+                                          case 'break_end': return 'outline'
+                                          default: return 'secondary'
+                                        }
+                                      })()} 
+                                      className={`text-xs ${
+                                        log.action === 'break_start' ? 'border-blue-300 text-blue-700' :
+                                        log.action === 'break_end' ? 'border-green-300 text-green-700' : ''
+                                      }`}
+                                    >
+                                      {(() => {
+                                        switch (log.action) {
+                                          case 'time_in': return 'Time In'
+                                          case 'time_out': return 'Time Out'
+                                          case 'break_start': return 'Break Start'
+                                          case 'break_end': return 'Break End'
+                                          default: return log.action
+                                        }
+                                      })()}
                                     </Badge>
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap text-sm">
@@ -557,6 +592,9 @@ export default function UserTimeReportsPage() {
                                     })}
                                   </td>
                                   <td className="px-4 py-3 text-sm truncate">{log.location}</td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground truncate">
+                                    {log.note || '-'}
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
@@ -566,11 +604,33 @@ export default function UserTimeReportsPage() {
                             {timeLogs.map((log) => (
                               <div key={log._id} className="p-3 hover:bg-muted/50">
                                 <div className="flex items-center justify-between mb-2">
-                                  <Badge variant={log.action === 'time_in' ? 'default' : 'secondary'} className="text-xs">
-                                    {log.action === 'time_in' ? 'Time In' : 'Time Out'}
+                                  <Badge 
+                                    variant={(() => {
+                                      switch (log.action) {
+                                        case 'time_in': return 'default'
+                                        case 'time_out': return 'secondary'
+                                        case 'break_start': return 'outline'
+                                        case 'break_end': return 'outline'
+                                        default: return 'secondary'
+                                      }
+                                    })()} 
+                                    className={`text-xs ${
+                                      log.action === 'break_start' ? 'border-blue-300 text-blue-700' :
+                                      log.action === 'break_end' ? 'border-green-300 text-green-700' : ''
+                                    }`}
+                                  >
+                                    {(() => {
+                                      switch (log.action) {
+                                        case 'time_in': return 'Time In'
+                                        case 'time_out': return 'Time Out'
+                                        case 'break_start': return 'Break Start'
+                                        case 'break_end': return 'Break End'
+                                        default: return log.action
+                                      }
+                                    })()}
                                   </Badge>
                                 </div>
-                                <div className="text-sm">
+                                <div className="text-sm mb-1">
                                   {new Date(log.timestamp).toLocaleString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
@@ -580,6 +640,11 @@ export default function UserTimeReportsPage() {
                                     hour12: true
                                   })}
                                 </div>
+                                {log.note && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {log.note}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

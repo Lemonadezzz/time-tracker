@@ -159,7 +159,7 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
                   />
                 </svg>
               )}
-              Sign in with Google
+              Log in with Google
             </Button>
           </form>
         </CardContent>
