@@ -682,11 +682,11 @@ export default function Component() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-3 md:p-6 pt-20 md:pt-6">
-      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
-        {/* Greeting */}
-        {!loading && (
-          <div className="text-center md:text-left px-1">
+    <div className="min-h-screen bg-background">
+      {/* Header Section - Tucked at top */}
+      {!loading && (
+        <div className="border-b bg-card">
+          <div className="max-w-6xl mx-auto px-3 md:px-6 py-4 md:py-6">
             <h1 className="text-xl md:text-3xl font-bold text-foreground">
               {getGreeting()}!
             </h1>
@@ -694,8 +694,11 @@ export default function Component() {
               {location || 'Getting your location...'}
             </p>
           </div>
-        )}
+        </div>
+      )}
 
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
         {/* Timer Card */}
         <Card className="text-center">
           <CardContent className="p-4 md:p-6">
@@ -860,15 +863,12 @@ export default function Component() {
           </CardContent>
         </Card>
 
-        {/* Timeline - Mobile: Show compact version, Desktop: Full timeline */}
+        {/* Timeline - Mobile: Show total time, Desktop: Full timeline */}
         <Card>
           <CardHeader className="pb-3 md:pb-6">
             <CardTitle className="flex items-center gap-2 text-base md:text-xl">
               <Calendar className="w-4 h-4 md:w-5 md:h-5" />
-              {isTracking && todayEntries.length === 1 && todayEntries[0]._id === 'live-session'
-                ? 'Currently Working'
-                : 'Worked Today'
-              }
+              Worked Today
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 md:px-6">
@@ -879,21 +879,19 @@ export default function Component() {
               </div>
             ) : (
               <>
-                {/* Mobile: Compact list view */}
-                <div className="md:hidden space-y-2">
-                  {todayEntries.map((entry, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-2 bg-muted/30 rounded">
-                      <div>
-                        <div className="text-sm font-medium">{entry.timeIn}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {entry.timeOut ? `to ${entry.timeOut}` : 'In progress'}
-                        </div>
-                      </div>
-                      <div className="text-sm font-mono">
-                        {Math.floor(entry.duration / 3600)}h {Math.floor((entry.duration % 3600) / 60)}m
-                      </div>
+                {/* Mobile: Total time worked */}
+                <div className="md:hidden">
+                  <div className="flex justify-between items-center py-4">
+                    <div className="text-base text-muted-foreground">Time worked</div>
+                    <div className="text-base font-medium text-foreground">
+                      {(() => {
+                        const totalSeconds = todayEntries.reduce((sum, entry) => sum + entry.duration, 0)
+                        const hours = Math.floor(totalSeconds / 3600)
+                        const minutes = Math.floor((totalSeconds % 3600) / 60)
+                        return hours > 0 ? `${hours}hrs ${minutes}mins` : `${minutes}mins`
+                      })()}
                     </div>
-                  ))}
+                  </div>
                 </div>
                 {/* Desktop: Timeline view */}
                 <div className="hidden md:block">

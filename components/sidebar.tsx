@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, ChevronLeft, ChevronRight, Timer, FileText, BarChart3, Settings, Users, TrendingUp, Moon, Sun, MoreVertical, X } from "lucide-react"
+import { LogOut, User, ChevronLeft, ChevronRight, Timer, FileText, BarChart3, Settings, Users, TrendingUp, Moon, Sun, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/lib/theme"
 
@@ -91,29 +91,19 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
           }
         }
       `}</style>
-      {/* Mobile Topbar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
-              <span className="text-background font-bold text-sm">V2</span>
-            </div>
-            <h1 className="text-lg font-semibold text-foreground">obelisk</h1>
-          </div>
-          <Button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            variant="ghost"
-            size="sm"
-            className="w-10 h-10 p-0"
-          >
-            {mobileMenuOpen ? <X className="w-4 h-4" /> : <MoreVertical className="w-4 h-4" />}
-          </Button>
-        </div>
-      </div>
+      {/* Mobile Hamburger Button */}
+      <Button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        variant="ghost"
+        size="sm"
+        className="md:hidden fixed top-4 right-4 z-50 w-10 h-10 p-0 bg-card border shadow-md hover:bg-accent"
+      >
+        {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </Button>
 
       {/* Mobile Dropdown */}
       {mobileMenuOpen && (
-        <div className="mobile-menu md:hidden fixed top-16 right-4 z-50 w-64 bg-card border rounded-lg shadow-lg">
+        <div className="mobile-menu md:hidden fixed top-16 right-4 z-40 w-64 bg-card border rounded-lg shadow-lg">
           <div className="p-4 space-y-2">
             {mounted && roleLoaded && navigation.map((item) => {
               const Icon = item.icon
