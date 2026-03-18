@@ -683,14 +683,14 @@ export default function Component() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Section - Tucked at top */}
+      {/* Header Section - Mobile only, tucked at top */}
       {!loading && (
-        <div className="border-b bg-card">
-          <div className="max-w-6xl mx-auto px-3 md:px-6 py-4 md:py-6">
-            <h1 className="text-xl md:text-3xl font-bold text-foreground">
+        <div className="md:hidden bg-card">
+          <div className="px-3 py-4">
+            <h1 className="text-xl font-bold text-foreground">
               {getGreeting()}!
             </h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {location || 'Getting your location...'}
             </p>
           </div>
@@ -699,6 +699,17 @@ export default function Component() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
+        {/* Greeting - Desktop only */}
+        {!loading && (
+          <div className="hidden md:block text-left px-1">
+            <h1 className="text-3xl font-bold text-foreground">
+              {getGreeting()}!
+            </h1>
+            <p className="text-base text-muted-foreground mt-1">
+              {location || 'Getting your location...'}
+            </p>
+          </div>
+        )}
         {/* Timer Card */}
         <Card className="text-center">
           <CardContent className="p-4 md:p-6">
