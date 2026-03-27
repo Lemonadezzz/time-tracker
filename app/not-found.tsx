@@ -26,7 +26,7 @@ export default function NotFound() {
           <h1 className="text-6xl font-bold text-foreground">404</h1>
           <h2 className="text-2xl font-semibold text-muted-foreground">Page Not Found</h2>
           <p className="text-muted-foreground max-w-md mx-auto">
-            Oops! The page you're looking for has gone to the digital graveyard.
+            Oops! The page you&apos;re looking for has gone to the digital graveyard.
           </p>
         </div>
 

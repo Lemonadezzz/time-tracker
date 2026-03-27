@@ -83,57 +83,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ isTracking: false, sessionStart: null })
       }
 
-      // Check if break time limit exceeded and auto-resume
-      if (activeSession.isOnBreak && activeSession.breakStartTime) {
-        const breakDuration = Math.floor((now.getTime() - new Date(activeSession.breakStartTime).getTime()) / 1000)
-        const totalBreakTime = (activeSession.totalBreakTime || 0) + breakDuration
-        const maxBreakTime = 90 * 60 // 1.5 hours in seconds
-        
-        if (totalBreakTime >= maxBreakTime) {
-          // Add current break to break periods
-          const breakPeriods = activeSession.breakPeriods || []
-          breakPeriods.push({
-            startTime: activeSession.breakStartTime,
-            endTime: now,
-            duration: breakDuration
-          })
-          
-          // Auto-resume from break
-          await sessions.updateOne(
-            { _id: activeSession._id },
-            { 
-              $set: { 
-                isOnBreak: false,
-                totalBreakTime: maxBreakTime,
-                breakPeriods: breakPeriods
-              },
-              $unset: { breakStartTime: 1 }
-            }
-          )
-          
-          // Log auto break end
-          await db.collection('action_logs').insertOne({
-            userId: user.userId.toString(),
-            action: 'break_end',
-            timestamp: now,
-            location: activeSession.location || 'Location Unavailable',
-            ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
-            username: user.username,
-            duration: breakDuration,
-            note: `Auto-resumed: Break limit reached (${Math.floor(breakDuration / 60)}m ${breakDuration % 60}s)`
-          })
-          
-          return NextResponse.json({
-            isTracking: true,
-            isOnBreak: false,
-            sessionStart: activeSession.startTime,
-            breakTimeUsed: maxBreakTime,
-            breakTimeRemaining: 0,
-            autoResumed: true,
-            breakPeriods: breakPeriods
-          })
-        }
-      }
+      // Check if break time limit exceeded and auto-resume - REMOVED
+      // No break time limits anymore
     }
 
     // Calculate daily break time used
@@ -167,7 +118,6 @@ export async function GET(request: NextRequest) {
       sessionStart: activeSession?.startTime || null,
       currentBreakStart: activeSession?.breakStartTime || null,
       breakTimeUsed: activeSession?.totalBreakTime || 0,
-      breakTimeRemaining,
       breakPeriods: activeSession?.breakPeriods || []
     })
   } catch (error) {
@@ -268,30 +218,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'No active session' }, { status: 400 })
       }
 
-      // Check daily break time limit
-      const today = new Date().toLocaleDateString('en-CA')
-      const todaySessions = await sessions.find({
-        userId: new ObjectId(user.userId),
-        startTime: {
-          $gte: new Date(today + 'T00:00:00.000Z'),
-          $lt: new Date(today + 'T23:59:59.999Z')
-        }
-      }).toArray()
-
-      let totalBreakTimeToday = 0
-      for (const session of todaySessions) {
-        totalBreakTimeToday += session.totalBreakTime || 0
-      }
-
-      const maxBreakTime = 90 * 60 // 1.5 hours in seconds
-      if (totalBreakTimeToday >= maxBreakTime) {
-        return NextResponse.json({ 
-          error: 'Daily break limit reached',
-          breakTimeUsed: totalBreakTimeToday,
-          breakTimeRemaining: 0
-        }, { status: 400 })
-      }
-
       // Set session to break mode
       await sessions.updateOne(
         { _id: activeSession._id },
@@ -310,13 +236,11 @@ export async function POST(request: NextRequest) {
         timestamp: new Date(),
         location: activeSession.location || 'Location Unavailable',
         ipAddress,
-        username: user.username,
-        note: `Break time remaining: ${Math.floor((maxBreakTime - totalBreakTimeToday) / 60)} minutes`
+        username: user.username
       })
 
       return NextResponse.json({ 
-        success: true,
-        breakTimeRemaining: maxBreakTime - totalBreakTimeToday
+        success: true
       })
     } else if (action === 'resume') {
       const activeSession = await sessions.findOne({
@@ -367,11 +291,9 @@ export async function POST(request: NextRequest) {
         note: `Break duration: ${Math.floor(breakDuration / 60)}m ${breakDuration % 60}s`
       })
 
-      const maxBreakTime = 90 * 60
       return NextResponse.json({ 
         success: true,
         breakTimeUsed: newTotalBreakTime,
-        breakTimeRemaining: Math.max(0, maxBreakTime - newTotalBreakTime),
         breakPeriods: breakPeriods
       })
     }

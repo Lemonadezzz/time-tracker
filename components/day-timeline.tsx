@@ -9,6 +9,7 @@ interface TimeEntry {
   timeOut: string | null // HH:MM AM/PM
   duration: number // in seconds
   isOnBreak?: boolean // For live sessions
+  breakStartTime?: string // ISO string for current break start
   breakPeriods?: Array<{
     startTime: string
     endTime: string
@@ -250,27 +251,108 @@ export default function DayTimeline({ entries }: DayTimelineProps) {
           const leftPosition = clippedStartMinutes * PIXELS_PER_MINUTE
           const width = (clippedEndMinutes - clippedStartMinutes) * PIXELS_PER_MINUTE
 
-          // Use blue color if on break, green if actively working
           const isOnBreak = entry.isOnBreak
-          const bgColor = isOnBreak ? 'bg-blue-500/50' : 'bg-green-500/50'
-          const borderColor = isOnBreak ? 'border-blue-600' : 'border-green-600'
-          const statusText = isOnBreak ? 'On break since' : 'Currently tracking since'
 
           return (
-            <div
-              key={entry.id}
-              className={`absolute ${bgColor} rounded-sm border ${borderColor} animate-pulse`}
-              style={{
-                left: `${leftPosition}px`,
-                width: `${width}px`,
-                height: `${BAR_HEIGHT}px`,
-                top: `${HOUR_MARKER_HEIGHT + 10}px`,
-              }}
-              title={`${statusText} ${formatTime(entry.timeIn)}`}
-            >
-              <span className="sr-only">
-                {statusText} {formatTime(entry.timeIn)}
-              </span>
+            <div key={entry.id}>
+              {/* Main live session bar - ALWAYS GREEN (work time) */}
+              <div
+                className="absolute bg-green-500/50 rounded-sm border border-green-600 animate-pulse"
+                style={{
+                  left: `${leftPosition}px`,
+                  width: `${width}px`,
+                  height: `${BAR_HEIGHT}px`,
+                  top: `${HOUR_MARKER_HEIGHT + 10}px`,
+                }}
+                title={`Currently tracking since ${formatTime(entry.timeIn)}`}
+              >
+                <span className="sr-only">
+                  Currently tracking since {formatTime(entry.timeIn)}
+                </span>
+              </div>
+              
+              {/* Completed break periods overlay */}
+              {entry.breakPeriods?.map((breakPeriod, breakIndex) => {
+                try {
+                  const breakStartDate = new Date(breakPeriod.startTime)
+                  const breakEndDate = new Date(breakPeriod.endTime)
+                  
+                  if (isNaN(breakStartDate.getTime()) || isNaN(breakEndDate.getTime())) {
+                    return null
+                  }
+                  
+                  const breakStartMinutes = (breakStartDate.getHours() - START_HOUR) * MINUTES_PER_HOUR + breakStartDate.getMinutes()
+                  const breakEndMinutes = (breakEndDate.getHours() - START_HOUR) * MINUTES_PER_HOUR + breakEndDate.getMinutes()
+                  
+                  const clippedBreakStart = Math.max(0, breakStartMinutes)
+                  const clippedBreakEnd = Math.min(TOTAL_MINUTES, breakEndMinutes)
+                  
+                  if (clippedBreakStart >= clippedBreakEnd) return null
+                  
+                  const breakLeft = clippedBreakStart * PIXELS_PER_MINUTE
+                  const breakWidth = (clippedBreakEnd - clippedBreakStart) * PIXELS_PER_MINUTE
+                  
+                  return (
+                    <div
+                      key={`live-break-${breakIndex}`}
+                      className="absolute bg-blue-500/70 rounded-sm border border-blue-600"
+                      style={{
+                        left: `${breakLeft}px`,
+                        width: `${breakWidth}px`,
+                        height: `${BAR_HEIGHT}px`,
+                        top: `${HOUR_MARKER_HEIGHT + 10}px`,
+                        zIndex: 11
+                      }}
+                      title={`Break: ${breakStartDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - ${breakEndDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} (${Math.floor(breakPeriod.duration / 60)}m)`}
+                    >
+                      <span className="sr-only">
+                        Break: {breakStartDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - {breakEndDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} ({Math.floor(breakPeriod.duration / 60)}m)
+                      </span>
+                    </div>
+                  )
+                } catch (error) {
+                  return null
+                }
+              })}
+              
+              {/* Current active break overlay - ONLY if currently on break */}
+              {isOnBreak && entry.breakStartTime && (() => {
+                try {
+                  const breakStartDate = new Date(entry.breakStartTime)
+                  
+                  if (isNaN(breakStartDate.getTime())) return null
+                  
+                  // Calculate break start position
+                  const breakStartMinutes = (breakStartDate.getHours() - START_HOUR) * MINUTES_PER_HOUR + breakStartDate.getMinutes()
+                  const clippedBreakStart = Math.max(0, breakStartMinutes)
+                  
+                  // Break goes from break start to current time
+                  const breakLeft = clippedBreakStart * PIXELS_PER_MINUTE
+                  const breakWidth = (clippedEndMinutes - clippedBreakStart) * PIXELS_PER_MINUTE
+                  
+                  if (breakWidth <= 0) return null
+                  
+                  return (
+                    <div
+                      className="absolute bg-blue-500/70 rounded-sm border border-blue-600 animate-pulse"
+                      style={{
+                        left: `${breakLeft}px`,
+                        width: `${breakWidth}px`,
+                        height: `${BAR_HEIGHT}px`,
+                        top: `${HOUR_MARKER_HEIGHT + 10}px`,
+                        zIndex: 12
+                      }}
+                      title={`On break since ${breakStartDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`}
+                    >
+                      <span className="sr-only">
+                        On break since {breakStartDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </span>
+                    </div>
+                  )
+                } catch (error) {
+                  return null
+                }
+              })()}
             </div>
           )
         })}
