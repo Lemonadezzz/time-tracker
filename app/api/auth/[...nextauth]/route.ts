@@ -26,12 +26,13 @@ const authOptions: NextAuthOptions = {
             return false
           }
           
-          // ALLOW: Update user with Google ID
+          // ALLOW: Update user with Google ID and image
           await users.updateOne(
             { email: user.email },
             { 
               $set: { 
                 googleId: account.providerAccountId,
+                image: user.image || null,
                 lastLogin: new Date(),
                 updatedAt: new Date()
               } 

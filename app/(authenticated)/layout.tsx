@@ -15,12 +15,14 @@ export default function AuthenticatedLayout({
   children: React.ReactNode
 }) {
   const [username, setUsername] = useState<string | null>(null)
+  const [userAvatar, setUserAvatar] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const { updateActivity } = useAutoLogout()
 
   useEffect(() => {
     const savedUsername = localStorage.getItem("loggedInUsername")
+    const savedAvatar = localStorage.getItem("userAvatar")
     const userRole = localStorage.getItem("userRole") as 'admin' | 'user' | 'developer'
     
     // Check if session is expired
@@ -33,6 +35,7 @@ export default function AuthenticatedLayout({
       router.push("/")
     } else {
       setUsername(savedUsername)
+      setUserAvatar(savedAvatar)
       
       // Check if user has permission to access current page
       if (isAdminOnlyPage(pathname) && !hasAdminAccess(userRole)) {
@@ -67,6 +70,7 @@ export default function AuthenticatedLayout({
     authService.clearSession() // Full cleanup on manual logout
     localStorage.removeItem("loggedInUsername")
     localStorage.removeItem("userRole")
+    localStorage.removeItem("userAvatar")
     await signOut({ redirect: false })
     router.push("/")
   }
@@ -76,7 +80,7 @@ export default function AuthenticatedLayout({
   return (
     <>
       <div className="flex min-h-screen" suppressHydrationWarning>
-        <Sidebar username={username} onLogout={handleLogout} />
+        <Sidebar username={username} onLogout={handleLogout} userAvatar={userAvatar} />
         <div className="main-content flex-1 flex flex-col items-center">
           <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8">
             {children}

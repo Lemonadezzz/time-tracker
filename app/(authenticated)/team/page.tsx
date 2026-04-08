@@ -11,8 +11,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Users, Clock, Plus, Edit, Trash2, UserPlus, Key, Eye, EyeOff, Building2 } from "lucide-react"
 import { toast } from "sonner"
-import { Toaster } from "sonner"
 import { Label } from "@/components/ui/label"
+
+import { Avatar } from "@/components/ui/avatar"
 
 interface User {
   _id: string
@@ -21,6 +22,8 @@ interface User {
   role: 'admin' | 'user' | 'developer'
   departmentId?: string
   createdAt: string
+  googleId?: string
+  image?: string
 }
 
 interface Department {
@@ -438,15 +441,22 @@ export default function TeamPage() {
                     <div className="space-y-1">
                       {users.map((user) => (
                         <div key={user._id} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium text-sm truncate">{user.username}</p>
-                              <Badge className={`text-xs px-1.5 py-0.5 ${getRoleBadgeColor(user.role)}`}>
-                                {user.role}
-                              </Badge>
+                          <div className="min-w-0 flex-1 flex items-center gap-3">
+                            <Avatar 
+                              name={user.username} 
+                              imageUrl={user.image}
+                              size="md"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm truncate">{user.username}</p>
+                                <Badge className={`text-xs px-1.5 py-0.5 ${getRoleBadgeColor(user.role)}`}>
+                                  {user.role}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                              <p className="text-xs text-muted-foreground">{getDeptName(user.departmentId)}</p>
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                            <p className="text-xs text-muted-foreground">{getDeptName(user.departmentId)}</p>
                           </div>
                           <div className="flex items-center gap-1 ml-2">
                             <Button
@@ -834,7 +844,6 @@ export default function TeamPage() {
           </div>
         </DialogContent>
       </Dialog>
-      <Toaster richColors position="bottom-right" />
     </div>
   )
 }

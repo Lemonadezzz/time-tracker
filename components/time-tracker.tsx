@@ -46,6 +46,7 @@ export default function Component() {
     endTime: string
     duration: number
   }>>([])
+  const [sessionConflictMessage, setSessionConflictMessage] = useState<string | null>(null)
   const locationRequestedRef = useRef(false)
   const isStoppingRef = useRef(false)
 
@@ -65,6 +66,17 @@ export default function Component() {
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
+
+  // Handle session conflict notifications
+  useEffect(() => {
+    if (sessionConflictMessage) {
+      toast.warning("Session conflict detected", {
+        description: sessionConflictMessage,
+        duration: 5000
+      })
+      setSessionConflictMessage(null)
+    }
+  }, [sessionConflictMessage])
 
   const getUserLocation = () => {
     if (!navigator.geolocation || locationRequestedRef.current) {
@@ -178,10 +190,7 @@ export default function Component() {
 
       // Handle session conflict
       if (data.sessionConflict) {
-        toast.warning("Session conflict detected", {
-          description: data.message || "Previous session was closed due to login from another device",
-          duration: 5000
-        })
+        setSessionConflictMessage(data.message || "Previous session was closed due to login from another device")
         // Reload time entries to show the auto-created entry
         await loadTimeEntries()
         setLoading(false)

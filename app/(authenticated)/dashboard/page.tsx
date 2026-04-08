@@ -52,8 +52,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-3 md:p-6 md:pt-6">
-      <div className="max-w-6xl md:mx-auto space-y-3 md:space-y-6">
+    <div className="min-h-screen bg-background">
+      <div className="w-full max-w-7xl mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
         <div className="flex items-center gap-2">
           <BarChart3 className="w-5 h-5 md:w-6 md:h-6" />
           <h1 className="text-xl md:text-2xl font-bold">Dashboard</h1>
@@ -62,36 +62,37 @@ export default function DashboardPage() {
         {/* Active Timers Card */}
         <Card>
           <CardHeader className="pb-3 md:pb-6">
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between text-base md:text-xl">
               <div className="flex items-center gap-2">
                 <Play className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
-                <span className="text-base md:text-xl">Active Timers</span>
+                <span>Active Timers</span>
               </div>
-              <Badge variant="secondary" className="text-xs hidden md:inline-flex">
-                {activeSessions.length} active
+              <Badge variant="secondary" className="text-xs">
+                {activeSessions.length}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 md:px-6">
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Clock className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                <p>Loading active timers...</p>
+                <Clock className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-2 md:mb-4 animate-spin" />
+                <p className="text-sm md:text-base">Loading active timers...</p>
               </div>
             ) : activeSessions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No users are currently tracking time</p>
+                <Users className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-2 md:mb-4 opacity-50" />
+                <p className="text-sm md:text-base">No users are currently tracking time</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3 md:space-y-2">
                 {activeSessions.map((session, index) => {
                   const duration = calculateDuration(session.startTime)
                   const startTime = new Date(session.startTime)
                   
                   return (
-                    <div key={index} className="flex flex-col md:grid md:grid-cols-3 gap-2 md:gap-4 items-start md:items-center py-3 md:py-2 border-b last:border-b-0">
-                      <div className="min-w-0 w-full md:w-auto">
+                    <div key={index} className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 py-3 border-b last:border-b-0">
+                      {/* User info */}
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm md:text-base truncate">{session.username}</p>
                         <p className="text-xs text-muted-foreground">
                           Started {startTime.toLocaleTimeString("en-US", {
@@ -101,16 +102,17 @@ export default function DashboardPage() {
                           })}
                         </p>
                       </div>
-                      <div className="min-w-0 w-full md:w-auto md:text-center flex flex-col justify-center">
-                        <p className="text-xs md:text-sm">
-                          📍 {session.location ? session.location.split(', ')[0] : 'Location'}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {session.location ? session.location.split(', ')[1] || 'Unavailable' : 'Unavailable'}
+                      
+                      {/* Location */}
+                      <div className="flex-1 min-w-0 md:text-center">
+                        <p className="text-xs md:text-sm truncate">
+                          📍 {session.location || 'Location Unavailable'}
                         </p>
                       </div>
-                      <div className="w-full md:w-auto md:text-right">
-                        <p className="font-mono text-base md:text-sm">{formatDuration(duration)}</p>
+                      
+                      {/* Duration */}
+                      <div className="md:text-right">
+                        <p className="font-mono text-lg md:text-base font-semibold">{formatDuration(duration)}</p>
                         <p className="text-xs text-muted-foreground">elapsed</p>
                       </div>
                     </div>
@@ -123,13 +125,13 @@ export default function DashboardPage() {
 
         {/* Team Activity Heatmap */}
         <Card>
-          <CardHeader className="pb-0">
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              <span className="text-base">Team Activity</span>
+          <CardHeader className="pb-3 md:pb-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-xl">
+              <BarChart3 className="w-4 h-4 md:w-5 md:h-5" />
+              <span>Team Activity</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-3 py-2">
+          <CardContent className="px-3 md:px-6">
             <ActivityHeatmap />
           </CardContent>
         </Card>
@@ -141,9 +143,21 @@ export default function DashboardPage() {
 function ActivityHeatmap() {
   const [activityData, setActivityData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     loadActivityData()
+    
+    // Check initial screen size
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    
+    // Add resize listener
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
   const loadActivityData = async () => {
@@ -163,7 +177,6 @@ function ActivityHeatmap() {
 
   const generateCalendarData = () => {
     const today = new Date()
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
     
     // Mobile: show last 3 months, Desktop: show full year
     const startDate = new Date()
@@ -222,57 +235,59 @@ function ActivityHeatmap() {
 
   return (
     <div className="w-full">
-      <div className="w-full">
-        {/* Month labels */}
-        <div className="flex mb-3 md:mb-3 ml-10 md:ml-12">
-          {weeks.map((week, weekIndex) => {
-            const firstDay = week[0].date
-            const showMonth = firstDay.getDate() <= 7
-            return (
-              <div key={weekIndex} className="w-4 md:w-4 text-xs text-muted-foreground text-center mr-1 md:mr-1">
-                {showMonth ? months[firstDay.getMonth()] : ''}
-              </div>
-            )
-          })}
-        </div>
-        
-        {/* Calendar grid */}
-        <div className="flex">
-          {/* Day labels */}
-          <div className="flex flex-col mr-3 md:mr-3 w-8 md:w-9">
-            {days.map((day, index) => (
-              <div key={day} className="h-4 md:h-4 mb-1 md:mb-1 text-xs text-muted-foreground flex items-center justify-end">
-                {index % 2 === 1 ? day : ''}
-              </div>
-            ))}
+      <div className="w-full flex justify-center md:justify-start">
+        <div className="inline-block">
+          {/* Month labels */}
+          <div className="flex mb-2 md:mb-3 ml-8 md:ml-12">
+            {weeks.map((week, weekIndex) => {
+              const firstDay = week[0].date
+              const showMonth = firstDay.getDate() <= 7
+              return (
+                <div key={weekIndex} className="w-3 md:w-3.5 text-[10px] md:text-xs text-muted-foreground text-center mr-0.5 md:mr-1">
+                  {showMonth ? months[firstDay.getMonth()].slice(0, 3) : ''}
+                </div>
+              )
+            })}
           </div>
           
-          {/* Activity squares */}
-          <div className="flex gap-1.5">
-            {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-1.5">
-                {week.map((day, dayIndex) => (
-                  <div
-                    key={`${weekIndex}-${dayIndex}`}
-                    className={`w-3.5 h-3.5 ${getIntensityClass(day.users)} cursor-pointer hover:ring-1 hover:ring-primary/50 transition-all`}
-                    title={`${day.date.toDateString()}: ${day.users} users, ${day.hours.toFixed(1)}h total`}
-                  ></div>
-                ))}
-              </div>
-            ))}
+          {/* Calendar grid */}
+          <div className="flex">
+            {/* Day labels */}
+            <div className="flex flex-col mr-2 md:mr-3 w-6 md:w-9">
+              {days.map((day, index) => (
+                <div key={day} className="h-3 md:h-3.5 mb-0.5 md:mb-1 text-[10px] md:text-xs text-muted-foreground flex items-center justify-end">
+                  {index % 2 === 1 ? day.slice(0, 1) : ''}
+                </div>
+              ))}
+            </div>
+            
+            {/* Activity squares */}
+            <div className="flex gap-0.5 md:gap-1">
+              {weeks.map((week, weekIndex) => (
+                <div key={weekIndex} className="flex flex-col gap-0.5 md:gap-1">
+                  {week.map((day, dayIndex) => (
+                    <div
+                      key={`${weekIndex}-${dayIndex}`}
+                      className={`w-3 h-3 md:w-3.5 md:h-3.5 ${getIntensityClass(day.users)} cursor-pointer hover:ring-1 hover:ring-primary/50 transition-all rounded-sm`}
+                      title={`${day.date.toDateString()}: ${day.users} users, ${day.hours.toFixed(1)}h total`}
+                    ></div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
       
       {/* Legend */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground mt-4 md:mt-6">
+      <div className="flex items-center justify-between text-[10px] md:text-xs text-muted-foreground mt-3 md:mt-6">
         <span>Less</span>
-        <div className="flex gap-1 md:gap-1">
-          <div className="w-4 h-4 md:w-4 md:h-4 bg-gray-100 dark:bg-gray-800"></div>
-          <div className="w-4 h-4 md:w-4 md:h-4 bg-green-200 dark:bg-green-900"></div>
-          <div className="w-4 h-4 md:w-4 md:h-4 bg-green-300 dark:bg-green-700"></div>
-          <div className="w-4 h-4 md:w-4 md:h-4 bg-green-400 dark:bg-green-600"></div>
-          <div className="w-4 h-4 md:w-4 md:h-4 bg-green-500 dark:bg-green-500"></div>
+        <div className="flex gap-0.5 md:gap-1">
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-gray-100 dark:bg-gray-800 rounded-sm"></div>
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-green-200 dark:bg-green-900 rounded-sm"></div>
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-green-300 dark:bg-green-700 rounded-sm"></div>
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-green-400 dark:bg-green-600 rounded-sm"></div>
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-green-500 dark:bg-green-500 rounded-sm"></div>
         </div>
         <span>More</span>
       </div>

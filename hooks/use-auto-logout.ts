@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { authService } from '@/lib/auth'
@@ -11,8 +11,26 @@ export function useAutoLogout() {
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const warningShownRef = useRef(false)
   const logoutTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [shouldLogout, setShouldLogout] = useState<{ reason: 'expired' | 'warning_ignored' } | null>(null)
+  const [shouldShowWarning, setShouldShowWarning] = useState(false)
 
-  const handleLogout = async (reason: 'expired' | 'warning_ignored' = 'expired') => {
+  // Handle logout in useEffect to avoid render issues
+  useEffect(() => {
+    if (shouldLogout) {
+      performLogout(shouldLogout.reason)
+      setShouldLogout(null)
+    }
+  }, [shouldLogout])
+
+  // Handle warning in useEffect to avoid render issues
+  useEffect(() => {
+    if (shouldShowWarning) {
+      displayWarning()
+      setShouldShowWarning(false)
+    }
+  }, [shouldShowWarning])
+
+  const performLogout = async (reason: 'expired' | 'warning_ignored') => {
     // Clear all intervals and timeouts
     if (checkIntervalRef.current) {
       clearInterval(checkIntervalRef.current)
@@ -28,6 +46,7 @@ export function useAutoLogout() {
     authService.removeToken()
     localStorage.removeItem('loggedInUsername')
     localStorage.removeItem('userRole')
+    localStorage.removeItem('userAvatar')
     // Keep sessionId for timer continuity
     
     // Sign out and redirect
@@ -45,7 +64,7 @@ export function useAutoLogout() {
     router.push('/')
   }
 
-  const showWarning = () => {
+  const displayWarning = () => {
     if (warningShownRef.current) return
     
     warningShownRef.current = true
@@ -67,7 +86,7 @@ export function useAutoLogout() {
 
     // Set timeout to logout after 2 more minutes if no activity
     logoutTimeoutRef.current = setTimeout(() => {
-      handleLogout('warning_ignored')
+      setShouldLogout({ reason: 'warning_ignored' })
     }, 2 * 60 * 1000) // 2 minutes
   }
 
@@ -80,10 +99,10 @@ export function useAutoLogout() {
 
       if (timeSinceActivity >= thirteenMinutes && !warningShownRef.current) {
         // Show warning at 13 minutes
-        showWarning()
+        setShouldShowWarning(true)
       } else if (timeSinceActivity >= 15 * 60 * 1000) {
         // Force logout at 15 minutes
-        handleLogout()
+        setShouldLogout({ reason: 'expired' })
       }
     } else {
       // Reset warning if user became active again

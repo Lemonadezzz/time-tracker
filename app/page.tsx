@@ -16,9 +16,40 @@ export default function Page() {
     // Handle Google OAuth session
     if (status === "authenticated" && session?.accessToken) {
       authService.setToken(session.accessToken as string)
-      localStorage.setItem("loggedInUsername", session.user?.name || session.user?.email || "User")
-      localStorage.setItem("userRole", session.user?.role || "user")
-      router.push("/timer")
+      
+      // Fetch user details from database to get proper username
+      const fetchUserDetails = async () => {
+        try {
+          const response = await fetch('/api/users/me', {
+            headers: {
+              'Authorization': `Bearer ${session.accessToken}`
+            }
+          })
+          
+          if (response.ok) {
+            const userData = await response.json()
+            localStorage.setItem("loggedInUsername", userData.username || session.user?.name || "User")
+            localStorage.setItem("userRole", userData.role || session.user?.role || "user")
+          } else {
+            // Fallback to session data
+            localStorage.setItem("loggedInUsername", session.user?.name || session.user?.email || "User")
+            localStorage.setItem("userRole", session.user?.role || "user")
+          }
+        } catch (error) {
+          // Fallback to session data
+          localStorage.setItem("loggedInUsername", session.user?.name || session.user?.email || "User")
+          localStorage.setItem("userRole", session.user?.role || "user")
+        }
+        
+        // Store Google avatar if available
+        if (session.user?.image) {
+          localStorage.setItem("userAvatar", session.user.image)
+        }
+        
+        router.push("/timer")
+      }
+      
+      fetchUserDetails()
       return
     }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { LogOut, User, ChevronLeft, ChevronRight, Timer, FileText, BarChart3, Settings, Users, TrendingUp, Moon, Sun, Menu, X } from "lucide-react"
@@ -11,6 +11,7 @@ import { useTheme } from "@/lib/theme"
 interface SidebarProps {
   username: string
   onLogout: () => void
+  userAvatar?: string | null
 }
 
 const allNavigation = [
@@ -19,16 +20,17 @@ const allNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: BarChart3, roles: ['admin', 'developer'] },
   { name: "Users & Departments", href: "/team", icon: Users, roles: ['admin', 'developer'] },
   { name: "Team Timesheets", href: "/team-reports", icon: TrendingUp, roles: ['admin', 'developer'] },
-  { name: "Settings", href: "/settings", icon: Settings, roles: ['admin', 'user', 'developer'] },
+  { name: "Settings & Preferrences", href: "/settings", icon: Settings, roles: ['admin', 'user', 'developer'] },
 ]
 
-export default function Sidebar({ username, onLogout }: SidebarProps) {
+export default function Sidebar({ username, onLogout, userAvatar }: SidebarProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'developer'>('user')
   const [roleLoaded, setRoleLoaded] = useState(false)
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
@@ -133,10 +135,27 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
               )
             })}
             <div className="border-t pt-3 mt-3 space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground px-3">
-                <User className="w-4 h-4" />
+              <button 
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  router.push('/settings')
+                }}
+                className="flex items-center gap-2 text-sm text-muted-foreground px-3 w-full hover:text-foreground transition-colors"
+              >
+                {userAvatar ? (
+                  <img 
+                    src={userAvatar} 
+                    alt={username} 
+                    className="w-6 h-6 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="w-4 h-4" />
+                  </div>
+                )}
                 <span className="truncate">{username}</span>
-              </div>
+              </button>
               <div className="flex items-center justify-between px-3">
                 <span className="text-sm text-muted-foreground">Theme</span>
                 <Button
@@ -219,9 +238,24 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
         <div className="p-4 border-t space-y-3">
           {sidebarCollapsed ? (
             <>
-              <div className="flex justify-center" title={username}>
-                <User className="w-4 h-4 text-muted-foreground" />
-              </div>
+              <button 
+                onClick={() => router.push('/settings')}
+                className="flex justify-center w-full hover:opacity-80 transition-opacity" 
+                title={username}
+              >
+                {userAvatar ? (
+                  <img 
+                    src={userAvatar} 
+                    alt={username} 
+                    className="w-8 h-8 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                )}
+              </button>
               <div className="flex justify-center">
                 <Button
                   onClick={() => mounted && setTheme(theme === "dark" ? "light" : "dark")}
@@ -240,10 +274,24 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="w-4 h-4" />
+                <button 
+                  onClick={() => router.push('/settings')}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {userAvatar ? (
+                    <img 
+                      src={userAvatar} 
+                      alt={username} 
+                      className="w-6 h-6 rounded-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="w-4 h-4" />
+                    </div>
+                  )}
                   <span className="truncate">{username}</span>
-                </div>
+                </button>
                 <Button
                   onClick={() => mounted && setTheme(theme === "dark" ? "light" : "dark")}
                   variant="ghost"
