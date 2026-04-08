@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const sessionId = request.headers.get('x-session-id')
     const db = await getDatabase()
     const sessions = db.collection('sessions')
 
@@ -32,9 +33,56 @@ export async function GET(request: NextRequest) {
     })
 
     if (activeSession) {
+      // Check if this is a different session trying to access
+      if (sessionId && activeSession.sessionId && activeSession.sessionId !== sessionId) {
+        // Force close the old session and create time entry
+        const now = new Date()
+        const sessionStart = new Date(activeSession.startTime)
+        const totalElapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
+        const workDuration = totalElapsed - (activeSession.totalBreakTime || 0)
+        
+        // Create time entry for the force-closed session
+        await db.collection('timeentries').insertOne({
+          userId: user.userId.toString(),
+          date: sessionStart.toLocaleDateString('en-CA'),
+          timeIn: sessionStart.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
+          timeOut: now.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
+          duration: Math.max(0, workDuration),
+          location: activeSession.location || 'Location Unavailable',
+          breakPeriods: activeSession.breakPeriods || [],
+          ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
+          createdAt: now,
+          updatedAt: now,
+          note: 'Auto-closed due to session conflict'
+        })
+
+        // Log the force close
+        await db.collection('action_logs').insertOne({
+          userId: user.userId.toString(),
+          action: 'force_time_out',
+          timestamp: now,
+          location: activeSession.location || 'Location Unavailable',
+          ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
+          username: user.username,
+          note: 'Session force-closed due to new session from different device'
+        })
+
+        // Close the old session
+        await sessions.updateOne(
+          { _id: activeSession._id },
+          { $set: { isActive: false, endTime: now, forceClosedReason: 'session_conflict' } }
+        )
+
+        return NextResponse.json({ 
+          isTracking: false, 
+          sessionStart: null,
+          sessionConflict: true,
+          message: 'Previous session was automatically closed due to login from another device'
+        })
+      }
+
       const sessionDate = new Date(activeSession.startTime)
       const now = new Date()
-      // Use client timezone if available, otherwise fallback to server time
       const tz = request.headers.get('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone
 
       const sessionDateString = sessionDate.toLocaleDateString('en-CA', { timeZone: tz })
@@ -42,14 +90,10 @@ export async function GET(request: NextRequest) {
 
       // If session is from a previous day, auto-close it at 11:59 PM of that day
       if (sessionDateString !== nowDateString) {
-
-        // Use a simple calculation to get seconds until 11:59:59 PM in the user's timezone
         const localTimeStr = sessionDate.toLocaleString('en-US', { timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
         const [hours, minutes, seconds] = localTimeStr.split(':').map(Number)
-        // seconds from the session start time until midnight that same day
         const secondsUntilMidnight = (23 - hours) * 3600 + (59 - minutes) * 60 + (59 - seconds)
         const autoEndTime = new Date(sessionDate.getTime() + secondsUntilMidnight * 1000)
-
         const duration = secondsUntilMidnight
 
         // Auto-close session entry on previous day
@@ -60,9 +104,11 @@ export async function GET(request: NextRequest) {
           timeOut: "11:59 PM",
           duration,
           location: activeSession.location || 'Location Unavailable',
+          breakPeriods: activeSession.breakPeriods || [],
           ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
           createdAt: autoEndTime,
           updatedAt: autoEndTime,
+          note: 'Auto-closed at midnight'
         })
 
         await db.collection('action_logs').insertOne({
@@ -82,9 +128,6 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ isTracking: false, sessionStart: null })
       }
-
-      // Check if break time limit exceeded and auto-resume - REMOVED
-      // No break time limits anymore
     }
 
     // Calculate daily break time used
@@ -118,7 +161,8 @@ export async function GET(request: NextRequest) {
       sessionStart: activeSession?.startTime || null,
       currentBreakStart: activeSession?.breakStartTime || null,
       breakTimeUsed: activeSession?.totalBreakTime || 0,
-      breakPeriods: activeSession?.breakPeriods || []
+      breakPeriods: activeSession?.breakPeriods || [],
+      sessionId: activeSession?.sessionId || null
     })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -140,16 +184,58 @@ export async function POST(request: NextRequest) {
     const ipAddress = hashIpAddress(rawIp)
 
     if (action === 'start') {
-      // End any existing active session
+      const sessionId = request.headers.get('x-session-id') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      // Check for existing active sessions and force close them
+      const existingSessions = await sessions.find({
+        userId: new ObjectId(user.userId),
+        isActive: true
+      }).toArray()
+
+      for (const existingSession of existingSessions) {
+        const now = new Date()
+        const sessionStart = new Date(existingSession.startTime)
+        const totalElapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
+        const workDuration = totalElapsed - (existingSession.totalBreakTime || 0)
+        
+        // Create time entry for force-closed session
+        await db.collection('timeentries').insertOne({
+          userId: user.userId.toString(),
+          date: sessionStart.toLocaleDateString('en-CA'),
+          timeIn: sessionStart.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
+          timeOut: now.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
+          duration: Math.max(0, workDuration),
+          location: existingSession.location || 'Location Unavailable',
+          breakPeriods: existingSession.breakPeriods || [],
+          ipAddress,
+          createdAt: now,
+          updatedAt: now,
+          note: 'Auto-closed due to new session start'
+        })
+
+        // Log the force close
+        await actionLogs.insertOne({
+          userId: user.userId.toString(),
+          action: 'force_time_out',
+          timestamp: now,
+          location: existingSession.location || 'Location Unavailable',
+          ipAddress,
+          username: user.username,
+          note: 'Previous session force-closed due to new session start'
+        })
+      }
+
+      // End any existing active sessions
       await sessions.updateMany(
         { userId: new ObjectId(user.userId), isActive: true },
-        { $set: { isActive: false, endTime: new Date() } }
+        { $set: { isActive: false, endTime: new Date(), forceClosedReason: 'new_session_start' } }
       )
 
       // Start new session
       const now = new Date()
       await sessions.insertOne({
         userId: new ObjectId(user.userId),
+        sessionId: sessionId,
         startTime: now,
         location: location || 'Location Unavailable',
         isActive: true,
@@ -177,13 +263,23 @@ export async function POST(request: NextRequest) {
         ip: ipAddress
       })
 
-      return NextResponse.json({ success: true, sessionStart: now })
+      return NextResponse.json({ success: true, sessionStart: now, sessionId: sessionId })
     } else if (action === 'stop') {
+      const sessionId = request.headers.get('x-session-id')
       const now = new Date()
 
-      // End active session
-      await sessions.updateMany(
-        { userId: new ObjectId(user.userId), isActive: true },
+      // Find the specific session to stop
+      const sessionToStop = sessionId 
+        ? await sessions.findOne({ userId: new ObjectId(user.userId), sessionId: sessionId, isActive: true })
+        : await sessions.findOne({ userId: new ObjectId(user.userId), isActive: true })
+
+      if (!sessionToStop) {
+        return NextResponse.json({ error: 'No active session found' }, { status: 400 })
+      }
+
+      // End the specific session
+      await sessions.updateOne(
+        { _id: sessionToStop._id },
         { $set: { isActive: false, endTime: now } }
       )
 

@@ -40,6 +40,7 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
       const result = await authService.login(username, password)
       if (result.success) {
         authService.setToken(result.token)
+        authService.generateSessionId() // Generate new session ID on login
         localStorage.setItem('userRole', result.user.role)
         onLogin(username)
       } else {

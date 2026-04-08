@@ -160,10 +160,12 @@ export default function Component() {
         return
       }
 
+      const sessionId = localStorage.getItem('sessionId')
       const response = await fetch('/api/session', {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
+          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+          'X-Session-Id': sessionId || ''
         }
       })
 
@@ -173,6 +175,18 @@ export default function Component() {
       }
 
       const data = await response.json()
+
+      // Handle session conflict
+      if (data.sessionConflict) {
+        toast.warning("Session conflict detected", {
+          description: data.message || "Previous session was closed due to login from another device",
+          duration: 5000
+        })
+        // Reload time entries to show the auto-created entry
+        await loadTimeEntries()
+        setLoading(false)
+        return
+      }
 
       if (data.isTracking && data.sessionStart) {
         const sessionStart = new Date(data.sessionStart)
@@ -328,12 +342,20 @@ export default function Component() {
 
     try {
       const token = localStorage.getItem('authToken')
+      const sessionId = localStorage.getItem('sessionId') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      // Store session ID if it was generated
+      if (!localStorage.getItem('sessionId')) {
+        localStorage.setItem('sessionId', sessionId)
+      }
+      
       const response = await fetch('/api/session', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
+          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+          'X-Session-Id': sessionId
         },
         body: JSON.stringify({ action: 'start', location: locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable' })
       })
@@ -347,6 +369,11 @@ export default function Component() {
         setPausedSessionTime(0)
         setCompletedBreakPeriods([]) // Reset completed breaks for new session
         setIsTracking(true)
+
+        // Store the session ID returned from server
+        if (data.sessionId) {
+          localStorage.setItem('sessionId', data.sessionId)
+        }
 
         // Notify other tabs
         localStorage.setItem('sessionSync', Date.now().toString())
@@ -385,16 +412,27 @@ export default function Component() {
   const handleTakeBreak = async () => {
     if (buttonCooldown || !isTracking) return
     
+    // Check if user is authenticated for break actions
+    const token = localStorage.getItem('authToken')
+    if (!token) {
+      toast.error("Authentication required", {
+        description: "Please log in to take a break. Timer continues running.",
+        duration: 5000
+      })
+      return
+    }
+    
     setButtonCooldown(true)
     setTimeout(() => setButtonCooldown(false), 3000)
     
     try {
-      const token = localStorage.getItem('authToken')
+      const sessionId = localStorage.getItem('sessionId')
       const response = await fetch('/api/session', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Session-Id': sessionId || ''
         },
         body: JSON.stringify({ action: 'break' })
       })
@@ -435,16 +473,27 @@ export default function Component() {
   const handleResumeWork = async () => {
     if (buttonCooldown || !isTracking) return
     
+    // Check if user is authenticated for resume actions
+    const token = localStorage.getItem('authToken')
+    if (!token) {
+      toast.error("Authentication required", {
+        description: "Please log in to resume work. Timer continues running.",
+        duration: 5000
+      })
+      return
+    }
+    
     setButtonCooldown(true)
     setTimeout(() => setButtonCooldown(false), 3000)
     
     try {
-      const token = localStorage.getItem('authToken')
+      const sessionId = localStorage.getItem('sessionId')
       const response = await fetch('/api/session', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Session-Id': sessionId || ''
         },
         body: JSON.stringify({ action: 'resume' })
       })
@@ -515,10 +564,12 @@ export default function Component() {
     let breakPeriods: any[] = []
     try {
       const token = localStorage.getItem('authToken')
+      const sessionId = localStorage.getItem('sessionId')
       const sessionResponse = await fetch('/api/session', {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
+          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+          'X-Session-Id': sessionId || ''
         }
       })
       if (sessionResponse.ok) {
@@ -552,12 +603,14 @@ export default function Component() {
 
       // Stop session in background (less critical)
       const token = localStorage.getItem('authToken')
+      const sessionId = localStorage.getItem('sessionId')
       fetch('/api/session', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
+          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+          'X-Session-Id': sessionId || ''
         },
         body: JSON.stringify({ action: 'stop', location: currentLocation })
       }).catch(() => {})

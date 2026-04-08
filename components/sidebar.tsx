@@ -90,6 +90,15 @@ export default function Sidebar({ username, onLogout }: SidebarProps) {
             --sidebar-width: 0px;
           }
         }
+        .main-content {
+          margin-left: var(--sidebar-width);
+          transition: margin-left 0.3s ease-in-out;
+        }
+        @media (max-width: 768px) {
+          .main-content {
+            margin-left: 0;
+          }
+        }
       `}</style>
       {/* Mobile Hamburger Button */}
       <Button
