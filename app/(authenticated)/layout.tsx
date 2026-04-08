@@ -48,25 +48,9 @@ export default function AuthenticatedLayout({
   }, [router, pathname, updateActivity])
 
   const handleLogout = async () => {
-    // Only stop timer session on MANUAL logout, not auto-logout
-    try {
-      const token = authService.getToken()
-      const sessionId = authService.getSessionId()
-      if (token) {
-        await fetch('/api/session', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'X-Session-Id': sessionId || ''
-          },
-          body: JSON.stringify({ action: 'stop', location: 'Manual logout' })
-        })
-      }
-    } catch (error) {
-      // Silent fail - logout is more important
-    }
-
+    // Manual logout should NOT stop timer - only clear auth for UI access
+    // Timer continues running in the background
+    
     authService.clearSession() // Full cleanup on manual logout
     localStorage.removeItem("loggedInUsername")
     localStorage.removeItem("userRole")
