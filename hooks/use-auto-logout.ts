@@ -47,7 +47,6 @@ export function useAutoLogout() {
     localStorage.removeItem('loggedInUsername')
     localStorage.removeItem('userRole')
     localStorage.removeItem('userAvatar')
-    // Keep sessionId for timer continuity
     
     // Sign out and redirect
     await signOut({ redirect: false })
@@ -122,11 +121,6 @@ export function useAutoLogout() {
   }
 
   useEffect(() => {
-    // Generate session ID if not exists
-    if (!authService.getSessionId()) {
-      authService.generateSessionId()
-    }
-
     // Update activity on mount
     updateActivity()
 

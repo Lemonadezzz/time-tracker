@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const sessionId = request.headers.get('x-session-id')
     const db = await getDatabase()
     const sessions = db.collection('sessions')
 
@@ -33,22 +32,6 @@ export async function GET(request: NextRequest) {
     })
 
     if (activeSession) {
-      // Check if this is a different session trying to access
-      if (sessionId && activeSession.sessionId && activeSession.sessionId !== sessionId) {
-        // Different device/tab accessing - just inform, don't stop timer or create entry
-        return NextResponse.json({ 
-          isTracking: true,
-          sessionStart: activeSession.startTime,
-          isOnBreak: activeSession.isOnBreak || false,
-          currentBreakStart: activeSession.breakStartTime || null,
-          breakTimeUsed: activeSession.totalBreakTime || 0,
-          breakPeriods: activeSession.breakPeriods || [],
-          sessionId: activeSession.sessionId || null,
-          sessionConflict: true,
-          message: 'Timer is running on another device/tab'
-        })
-      }
-
       const sessionDate = new Date(activeSession.startTime)
       const now = new Date()
       const tz = request.headers.get('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -129,8 +112,7 @@ export async function GET(request: NextRequest) {
       sessionStart: activeSession?.startTime || null,
       currentBreakStart: activeSession?.breakStartTime || null,
       breakTimeUsed: activeSession?.totalBreakTime || 0,
-      breakPeriods: activeSession?.breakPeriods || [],
-      sessionId: activeSession?.sessionId || null
+      breakPeriods: activeSession?.breakPeriods || []
     })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -152,46 +134,25 @@ export async function POST(request: NextRequest) {
     const ipAddress = hashIpAddress(rawIp)
 
     if (action === 'start') {
-      const sessionId = request.headers.get('x-session-id') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      
-      // Check for existing active sessions - DO NOT force close or create entries
-      // Just update the session ID to the new device
+      // Check for existing active session
       const existingSession = await sessions.findOne({
         userId: new ObjectId(user.userId),
         isActive: true
       })
 
       if (existingSession) {
-        // Update existing session with new session ID (device switch)
-        await sessions.updateOne(
-          { _id: existingSession._id },
-          { $set: { sessionId: sessionId, updatedAt: new Date() } }
-        )
-
-        // Log the device switch
-        await actionLogs.insertOne({
-          userId: user.userId.toString(),
-          action: 'device_switch',
-          timestamp: new Date(),
-          location: location || 'Location Unavailable',
-          ipAddress,
-          username: user.username,
-          note: 'Timer accessed from different device'
-        })
-
+        // Timer already running - just return the existing session
         return NextResponse.json({ 
           success: true, 
-          sessionStart: existingSession.startTime, 
-          sessionId: sessionId,
-          message: 'Switched to this device'
+          sessionStart: existingSession.startTime,
+          message: 'Timer already running'
         })
       }
 
-      // Start new session (no existing active session)
+      // Start new session
       const now = new Date()
       await sessions.insertOne({
         userId: new ObjectId(user.userId),
-        sessionId: sessionId,
         startTime: now,
         location: location || 'Location Unavailable',
         isActive: true,
@@ -219,23 +180,23 @@ export async function POST(request: NextRequest) {
         ip: ipAddress
       })
 
-      return NextResponse.json({ success: true, sessionStart: now, sessionId: sessionId })
+      return NextResponse.json({ success: true, sessionStart: now })
     } else if (action === 'stop') {
-      const sessionId = request.headers.get('x-session-id')
       const now = new Date()
 
-      // Find the specific session to stop
-      const sessionToStop = sessionId 
-        ? await sessions.findOne({ userId: new ObjectId(user.userId), sessionId: sessionId, isActive: true })
-        : await sessions.findOne({ userId: new ObjectId(user.userId), isActive: true })
+      // Find and stop the active session
+      const activeSession = await sessions.findOne({ 
+        userId: new ObjectId(user.userId), 
+        isActive: true 
+      })
 
-      if (!sessionToStop) {
+      if (!activeSession) {
         return NextResponse.json({ error: 'No active session found' }, { status: 400 })
       }
 
-      // End the specific session
+      // End the session
       await sessions.updateOne(
-        { _id: sessionToStop._id },
+        { _id: activeSession._id },
         { $set: { isActive: false, endTime: now } }
       )
 

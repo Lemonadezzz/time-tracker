@@ -46,7 +46,6 @@ export default function Component() {
     endTime: string
     duration: number
   }>>([])
-  const [sessionConflictMessage, setSessionConflictMessage] = useState<string | null>(null)
   const locationRequestedRef = useRef(false)
   const isStoppingRef = useRef(false)
 
@@ -66,17 +65,6 @@ export default function Component() {
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
-
-  // Handle session conflict notifications
-  useEffect(() => {
-    if (sessionConflictMessage) {
-      toast.warning("Session conflict detected", {
-        description: sessionConflictMessage,
-        duration: 5000
-      })
-      setSessionConflictMessage(null)
-    }
-  }, [sessionConflictMessage])
 
   const getUserLocation = () => {
     if (!navigator.geolocation || locationRequestedRef.current) {
@@ -172,12 +160,10 @@ export default function Component() {
         return
       }
 
-      const sessionId = localStorage.getItem('sessionId')
       const response = await fetch('/api/session', {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
-          'X-Session-Id': sessionId || ''
+          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
         }
       })
 
@@ -187,14 +173,6 @@ export default function Component() {
       }
 
       const data = await response.json()
-
-      // Handle session conflict
-      if (data.sessionConflict) {
-        setSessionConflictMessage(data.message || "Timer is running on another device/tab")
-        // Don't reload entries - no entry was created
-        setLoading(false)
-        return
-      }
 
       if (data.isTracking && data.sessionStart) {
         const sessionStart = new Date(data.sessionStart)

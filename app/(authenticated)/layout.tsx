@@ -51,7 +51,7 @@ export default function AuthenticatedLayout({
     // Manual logout should NOT stop timer - only clear auth for UI access
     // Timer continues running in the background
     
-    authService.clearSession() // Full cleanup on manual logout
+    authService.clearSession()
     localStorage.removeItem("loggedInUsername")
     localStorage.removeItem("userRole")
     localStorage.removeItem("userAvatar")
