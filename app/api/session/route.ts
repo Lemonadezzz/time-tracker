@@ -35,49 +35,17 @@ export async function GET(request: NextRequest) {
     if (activeSession) {
       // Check if this is a different session trying to access
       if (sessionId && activeSession.sessionId && activeSession.sessionId !== sessionId) {
-        // Force close the old session and create time entry
-        const now = new Date()
-        const sessionStart = new Date(activeSession.startTime)
-        const totalElapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
-        const workDuration = totalElapsed - (activeSession.totalBreakTime || 0)
-        
-        // Create time entry for the force-closed session
-        await db.collection('timeentries').insertOne({
-          userId: user.userId.toString(),
-          date: sessionStart.toLocaleDateString('en-CA'),
-          timeIn: sessionStart.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
-          timeOut: now.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
-          duration: Math.max(0, workDuration),
-          location: activeSession.location || 'Location Unavailable',
-          breakPeriods: activeSession.breakPeriods || [],
-          ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
-          createdAt: now,
-          updatedAt: now,
-          note: 'Auto-closed due to session conflict'
-        })
-
-        // Log the force close
-        await db.collection('action_logs').insertOne({
-          userId: user.userId.toString(),
-          action: 'force_time_out',
-          timestamp: now,
-          location: activeSession.location || 'Location Unavailable',
-          ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
-          username: user.username,
-          note: 'Session force-closed due to new session from different device'
-        })
-
-        // Close the old session
-        await sessions.updateOne(
-          { _id: activeSession._id },
-          { $set: { isActive: false, endTime: now, forceClosedReason: 'session_conflict' } }
-        )
-
+        // Different device/tab accessing - just inform, don't stop timer or create entry
         return NextResponse.json({ 
-          isTracking: false, 
-          sessionStart: null,
+          isTracking: true,
+          sessionStart: activeSession.startTime,
+          isOnBreak: activeSession.isOnBreak || false,
+          currentBreakStart: activeSession.breakStartTime || null,
+          breakTimeUsed: activeSession.totalBreakTime || 0,
+          breakPeriods: activeSession.breakPeriods || [],
+          sessionId: activeSession.sessionId || null,
           sessionConflict: true,
-          message: 'Previous session was automatically closed due to login from another device'
+          message: 'Timer is running on another device/tab'
         })
       }
 
@@ -186,52 +154,40 @@ export async function POST(request: NextRequest) {
     if (action === 'start') {
       const sessionId = request.headers.get('x-session-id') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       
-      // Check for existing active sessions and force close them
-      const existingSessions = await sessions.find({
+      // Check for existing active sessions - DO NOT force close or create entries
+      // Just update the session ID to the new device
+      const existingSession = await sessions.findOne({
         userId: new ObjectId(user.userId),
         isActive: true
-      }).toArray()
+      })
 
-      for (const existingSession of existingSessions) {
-        const now = new Date()
-        const sessionStart = new Date(existingSession.startTime)
-        const totalElapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
-        const workDuration = totalElapsed - (existingSession.totalBreakTime || 0)
-        
-        // Create time entry for force-closed session
-        await db.collection('timeentries').insertOne({
-          userId: user.userId.toString(),
-          date: sessionStart.toLocaleDateString('en-CA'),
-          timeIn: sessionStart.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
-          timeOut: now.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
-          duration: Math.max(0, workDuration),
-          location: existingSession.location || 'Location Unavailable',
-          breakPeriods: existingSession.breakPeriods || [],
-          ipAddress,
-          createdAt: now,
-          updatedAt: now,
-          note: 'Auto-closed due to new session start'
-        })
+      if (existingSession) {
+        // Update existing session with new session ID (device switch)
+        await sessions.updateOne(
+          { _id: existingSession._id },
+          { $set: { sessionId: sessionId, updatedAt: new Date() } }
+        )
 
-        // Log the force close
+        // Log the device switch
         await actionLogs.insertOne({
           userId: user.userId.toString(),
-          action: 'force_time_out',
-          timestamp: now,
-          location: existingSession.location || 'Location Unavailable',
+          action: 'device_switch',
+          timestamp: new Date(),
+          location: location || 'Location Unavailable',
           ipAddress,
           username: user.username,
-          note: 'Previous session force-closed due to new session start'
+          note: 'Timer accessed from different device'
+        })
+
+        return NextResponse.json({ 
+          success: true, 
+          sessionStart: existingSession.startTime, 
+          sessionId: sessionId,
+          message: 'Switched to this device'
         })
       }
 
-      // End any existing active sessions
-      await sessions.updateMany(
-        { userId: new ObjectId(user.userId), isActive: true },
-        { $set: { isActive: false, endTime: new Date(), forceClosedReason: 'new_session_start' } }
-      )
-
-      // Start new session
+      // Start new session (no existing active session)
       const now = new Date()
       await sessions.insertOne({
         userId: new ObjectId(user.userId),

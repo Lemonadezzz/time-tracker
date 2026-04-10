@@ -190,9 +190,8 @@ export default function Component() {
 
       // Handle session conflict
       if (data.sessionConflict) {
-        setSessionConflictMessage(data.message || "Previous session was closed due to login from another device")
-        // Reload time entries to show the auto-created entry
-        await loadTimeEntries()
+        setSessionConflictMessage(data.message || "Timer is running on another device/tab")
+        // Don't reload entries - no entry was created
         setLoading(false)
         return
       }
