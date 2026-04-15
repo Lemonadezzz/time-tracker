@@ -46,7 +46,7 @@ export const authService = {
     if (!lastActivity) return true
     
     const now = Date.now()
-    const fifteenMinutes = 15 * 60 * 1000 // 15 minutes in milliseconds
-    return (now - lastActivity) > fifteenMinutes
+    const oneHour = 60 * 60 * 1000 // 1 hour in milliseconds
+    return (now - lastActivity) > oneHour
   }
 }

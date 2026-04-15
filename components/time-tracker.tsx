@@ -46,6 +46,7 @@ export default function Component() {
     endTime: string
     duration: number
   }>>([])
+  const [sevenHourNotificationShown, setSevenHourNotificationShown] = useState(false)
   const locationRequestedRef = useRef(false)
   const isStoppingRef = useRef(false)
 
@@ -54,6 +55,7 @@ export default function Component() {
     loadTimeEntries()
     checkActiveSession()
     getUserLocation()
+    requestNotificationPermission()
 
     // Cross-tab sync: listen for session changes
     const handleStorageChange = (e: StorageEvent) => {
@@ -65,6 +67,23 @@ export default function Component() {
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
+
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission()
+    }
+  }
+
+  const showBrowserNotification = (title: string, body: string) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'time-tracker-reminder'
+      })
+    }
+  }
 
   const getUserLocation = () => {
     if (!navigator.geolocation || locationRequestedRef.current) {
@@ -248,6 +267,20 @@ export default function Component() {
         const totalElapsed = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
         const workTime = totalElapsed - breakTimeUsed
         setCurrentSessionTime(Math.max(0, workTime))
+        
+        // Check if 7 hours reached and show notification
+        const sevenHours = 7 * 60 * 60 // 7 hours in seconds
+        if (workTime >= sevenHours && !sevenHourNotificationShown) {
+          setSevenHourNotificationShown(true)
+          showBrowserNotification(
+            'Don\'t forget to clock out soon!',
+            'You\'ve been working for 7 hours. Remember to stop your timer when you\'re done.'
+          )
+          toast.info('Don\'t forget to clock out soon!', {
+            description: 'You\'ve been working for 7 hours. Remember to stop your timer when you\'re done.',
+            duration: 10000
+          })
+        }
       }
 
       // If computer slept through midnight, force reload
@@ -282,7 +315,7 @@ export default function Component() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [isTracking, currentSessionStart, isOnBreak, breakTimeUsed, pausedSessionTime, breakStartTime])
+  }, [isTracking, currentSessionStart, isOnBreak, breakTimeUsed, pausedSessionTime, breakStartTime, sevenHourNotificationShown])
 
   // Break time monitoring effect - REMOVED (no more break limits)
 
@@ -354,6 +387,7 @@ export default function Component() {
         setBreakTimeUsed(0)
         setPausedSessionTime(0)
         setCompletedBreakPeriods([]) // Reset completed breaks for new session
+        setSevenHourNotificationShown(false) // Reset notification flag for new session
         setIsTracking(true)
 
         // Store the session ID returned from server
@@ -535,6 +569,7 @@ export default function Component() {
     setButtonCooldown(true)
     setIsTracking(false)
     setIsOnBreak(false) // Reset break state when stopping
+    setSevenHourNotificationShown(false) // Reset notification flag when stopping
 
     const sessionStart = currentSessionStart
     const sessionTime = currentSessionTime

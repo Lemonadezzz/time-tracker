@@ -53,7 +53,7 @@ export function useAutoLogout() {
     
     const message = reason === 'warning_ignored' 
       ? 'Session expired due to inactivity - timer continues running' 
-      : 'Session expired after 15 minutes of inactivity - timer continues running'
+      : 'Session expired after 1 hour of inactivity - timer continues running'
     
     toast.info('Logged out', {
       description: message,
@@ -69,8 +69,8 @@ export function useAutoLogout() {
     warningShownRef.current = true
     
     toast.info('Session expiring soon', {
-      description: 'You will be logged out in 2 minutes due to inactivity. Timer will continue running. Click anywhere to stay logged in.',
-      duration: 120000, // 2 minutes
+      description: 'You will be logged out in 15 minutes due to inactivity. Timer will continue running. Click anywhere to stay logged in.',
+      duration: 900000, // 15 minutes
       action: {
         label: 'Stay logged in',
         onClick: () => {
@@ -83,10 +83,10 @@ export function useAutoLogout() {
       }
     })
 
-    // Set timeout to logout after 2 more minutes if no activity
+    // Set timeout to logout after 15 more minutes if no activity
     logoutTimeoutRef.current = setTimeout(() => {
       setShouldLogout({ reason: 'warning_ignored' })
-    }, 2 * 60 * 1000) // 2 minutes
+    }, 15 * 60 * 1000) // 15 minutes
   }
 
   const checkSession = () => {
@@ -94,13 +94,13 @@ export function useAutoLogout() {
       const lastActivity = authService.getLastActivity()
       const now = Date.now()
       const timeSinceActivity = now - lastActivity
-      const thirteenMinutes = 13 * 60 * 1000 // 13 minutes
+      const fortyFiveMinutes = 45 * 60 * 1000 // 45 minutes
 
-      if (timeSinceActivity >= thirteenMinutes && !warningShownRef.current) {
-        // Show warning at 13 minutes
+      if (timeSinceActivity >= fortyFiveMinutes && !warningShownRef.current) {
+        // Show warning at 45 minutes (15 minutes before logout)
         setShouldShowWarning(true)
-      } else if (timeSinceActivity >= 15 * 60 * 1000) {
-        // Force logout at 15 minutes
+      } else if (timeSinceActivity >= 60 * 60 * 1000) {
+        // Force logout at 60 minutes
         setShouldLogout({ reason: 'expired' })
       }
     } else {
