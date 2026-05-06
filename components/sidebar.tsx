@@ -135,7 +135,7 @@ export default function Sidebar({ username, onLogout, userAvatar }: SidebarProps
               )
             })}
             <div className="border-t pt-3 mt-3 space-y-2">
-              <button 
+              <button
                 onClick={() => {
                   setMobileMenuOpen(false)
                   router.push('/settings')
@@ -143,9 +143,9 @@ export default function Sidebar({ username, onLogout, userAvatar }: SidebarProps
                 className="flex items-center gap-2 text-sm text-muted-foreground px-3 w-full hover:text-foreground transition-colors"
               >
                 {userAvatar ? (
-                  <img 
-                    src={userAvatar} 
-                    alt={username} 
+                  <img
+                    src={userAvatar}
+                    alt={username}
                     className="w-6 h-6 rounded-full object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -197,16 +197,12 @@ export default function Sidebar({ username, onLogout, userAvatar }: SidebarProps
         <div className="p-4 border-b">
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
-                <span className="text-background font-bold text-sm">V2</span>
-              </div>
-              <h1 className="text-sm font-semibold text-muted-foreground">obelisk</h1>
+              <img src="/tdci.png" alt="Logo" className="w-8 h-8 object-contain" />
+              <h1 className="text-sm font-semibold text-muted-foreground">TDCI Time Tracker</h1>
             </div>
           ) : (
             <div className="flex justify-center">
-              <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
-                <span className="text-background font-bold text-sm">V2</span>
-              </div>
+              <img src="/tdci.png" alt="Logo" className="w-8 h-8 object-contain" />
             </div>
           )}
         </div>
@@ -238,15 +234,15 @@ export default function Sidebar({ username, onLogout, userAvatar }: SidebarProps
         <div className="p-4 border-t space-y-3">
           {sidebarCollapsed ? (
             <>
-              <button 
+              <button
                 onClick={() => router.push('/settings')}
-                className="flex justify-center w-full hover:opacity-80 transition-opacity" 
+                className="flex justify-center w-full hover:opacity-80 transition-opacity"
                 title={username}
               >
                 {userAvatar ? (
-                  <img 
-                    src={userAvatar} 
-                    alt={username} 
+                  <img
+                    src={userAvatar}
+                    alt={username}
                     className="w-8 h-8 rounded-full object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -274,14 +270,14 @@ export default function Sidebar({ username, onLogout, userAvatar }: SidebarProps
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <button 
+                <button
                   onClick={() => router.push('/settings')}
                   className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {userAvatar ? (
-                    <img 
-                      src={userAvatar} 
-                      alt={username} 
+                    <img
+                      src={userAvatar}
+                      alt={username}
                       className="w-6 h-6 rounded-full object-cover"
                       referrerPolicy="no-referrer"
                     />
