@@ -16,6 +16,12 @@ export const authService = {
     return localStorage.getItem('authToken')
   },
 
+  generateSessionId() {
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    localStorage.setItem('sessionId', sessionId)
+    return sessionId
+  },
+
   setToken(token: string) {
     localStorage.setItem('authToken', token)
     this.updateLastActivity()
@@ -24,12 +30,16 @@ export const authService = {
   removeToken() {
     localStorage.removeItem('authToken')
     localStorage.removeItem('lastActivity')
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('sessionId')
   },
 
   clearSession() {
     // Full session cleanup
     localStorage.removeItem('authToken')
     localStorage.removeItem('lastActivity')
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('sessionId')
   },
 
   updateLastActivity() {

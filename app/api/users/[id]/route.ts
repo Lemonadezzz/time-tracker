@@ -68,9 +68,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       updatedAt: new Date()
     }
     
+    const updateOp: any = { $set: updateData }
+    
     if (departmentId !== undefined) {
       if (departmentId === null || departmentId === '') {
-        updateData.$unset = { departmentId: '' }
+        updateOp.$unset = { departmentId: '' }
       } else {
         updateData.departmentId = departmentId
       }
@@ -78,9 +80,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const result = await users.updateOne(
       { _id: new ObjectId(userId) },
-      departmentId === null || departmentId === '' 
-        ? { $set: updateData, $unset: { departmentId: '' } }
-        : { $set: updateData }
+      updateOp
     )
 
     if (result.matchedCount === 0) {

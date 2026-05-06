@@ -357,7 +357,7 @@ export default function Component() {
     }
 
     setButtonCooldown(true)
-    setTimeout(() => setButtonCooldown(false), 3000)
+    setTimeout(() => setButtonCooldown(false), 1500)
 
     try {
       const token = localStorage.getItem('authToken')
@@ -443,7 +443,7 @@ export default function Component() {
     }
     
     setButtonCooldown(true)
-    setTimeout(() => setButtonCooldown(false), 3000)
+    setTimeout(() => setButtonCooldown(false), 1500)
     
     try {
       const sessionId = localStorage.getItem('sessionId')
@@ -504,7 +504,7 @@ export default function Component() {
     }
     
     setButtonCooldown(true)
-    setTimeout(() => setButtonCooldown(false), 3000)
+    setTimeout(() => setButtonCooldown(false), 1500)
     
     try {
       const sessionId = localStorage.getItem('sessionId')
@@ -664,7 +664,7 @@ export default function Component() {
       setCurrentSessionTime(sessionTime)
     } finally {
       isStoppingRef.current = false
-      setTimeout(() => setButtonCooldown(false), 3000)
+      setTimeout(() => setButtonCooldown(false), 1500)
     }
   }
 
