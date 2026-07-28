@@ -6,9 +6,9 @@ import { ThemeProvider } from '@/lib/theme'
 import AuthProvider from '@/components/auth-provider'
 
 export const metadata: Metadata = {
-  title: 'TDCI Time Tracker',
+  title: 'kairo',
   icons: {
-    icon: '/tdci.png',
+    icon: '/kairo.png',
   },
 }
 
