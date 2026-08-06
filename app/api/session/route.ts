@@ -55,7 +55,6 @@ export async function GET(request: NextRequest) {
           timeOut: "11:59 PM",
           duration,
           location: activeSession.location || 'Location Unavailable',
-          breakPeriods: activeSession.breakPeriods || [],
           ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
           createdAt: autoEndTime,
           updatedAt: autoEndTime,
@@ -81,38 +80,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Calculate daily break time used
-    const today = new Date().toLocaleDateString('en-CA')
-    const todaySessions = await sessions.find({
-      userId: new ObjectId(user.userId),
-      startTime: {
-        $gte: new Date(today + 'T00:00:00.000Z'),
-        $lt: new Date(today + 'T23:59:59.999Z')
-      }
-    }).toArray()
-
-    let totalBreakTimeToday = 0
-    for (const session of todaySessions) {
-      totalBreakTimeToday += session.totalBreakTime || 0
-    }
-
-    // For break time remaining calculation, add current break time if on break
-    let totalBreakTimeIncludingCurrent = totalBreakTimeToday
-    if (activeSession?.isOnBreak && activeSession.breakStartTime) {
-      const currentBreakTime = Math.floor((new Date().getTime() - new Date(activeSession.breakStartTime).getTime()) / 1000)
-      totalBreakTimeIncludingCurrent += currentBreakTime
-    }
-
-    const maxBreakTime = 90 * 60 // 1.5 hours
-    const breakTimeRemaining = Math.max(0, maxBreakTime - totalBreakTimeIncludingCurrent)
-
     return NextResponse.json({
       isTracking: !!activeSession,
-      isOnBreak: activeSession?.isOnBreak || false,
-      sessionStart: activeSession?.startTime || null,
-      currentBreakStart: activeSession?.breakStartTime || null,
-      breakTimeUsed: activeSession?.totalBreakTime || 0,
-      breakPeriods: activeSession?.breakPeriods || []
+      sessionStart: activeSession?.startTime || null
     })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -156,7 +126,6 @@ export async function POST(request: NextRequest) {
         startTime: now,
         location: location || 'Location Unavailable',
         isActive: true,
-        isOnBreak: false,
         createdAt: now
       })
 
@@ -221,94 +190,6 @@ export async function POST(request: NextRequest) {
       })
 
       return NextResponse.json({ success: true })
-    } else if (action === 'break') {
-      const activeSession = await sessions.findOne({
-        userId: new ObjectId(user.userId),
-        isActive: true
-      })
-
-      if (!activeSession) {
-        return NextResponse.json({ error: 'No active session' }, { status: 400 })
-      }
-
-      // Set session to break mode
-      await sessions.updateOne(
-        { _id: activeSession._id },
-        { 
-          $set: { 
-            isOnBreak: true,
-            breakStartTime: new Date()
-          }
-        }
-      )
-
-      // Log break start action
-      await actionLogs.insertOne({
-        userId: user.userId.toString(),
-        action: 'break_start',
-        timestamp: new Date(),
-        location: activeSession.location || 'Location Unavailable',
-        ipAddress,
-        username: user.username
-      })
-
-      return NextResponse.json({ 
-        success: true
-      })
-    } else if (action === 'resume') {
-      const activeSession = await sessions.findOne({
-        userId: new ObjectId(user.userId),
-        isActive: true,
-        isOnBreak: true
-      })
-
-      if (!activeSession || !activeSession.breakStartTime) {
-        return NextResponse.json({ error: 'No active break session' }, { status: 400 })
-      }
-
-      // Calculate break duration
-      const now = new Date()
-      const breakDuration = Math.floor((now.getTime() - new Date(activeSession.breakStartTime).getTime()) / 1000)
-      const newTotalBreakTime = (activeSession.totalBreakTime || 0) + breakDuration
-
-      // Add completed break to break periods
-      const breakPeriods = activeSession.breakPeriods || []
-      breakPeriods.push({
-        startTime: activeSession.breakStartTime,
-        endTime: now,
-        duration: breakDuration
-      })
-
-      // Resume session from break
-      await sessions.updateOne(
-        { _id: activeSession._id },
-        { 
-          $set: { 
-            isOnBreak: false,
-            totalBreakTime: newTotalBreakTime,
-            breakPeriods: breakPeriods
-          },
-          $unset: { breakStartTime: 1 }
-        }
-      )
-
-      // Log break end action
-      await actionLogs.insertOne({
-        userId: user.userId.toString(),
-        action: 'break_end',
-        timestamp: now,
-        location: activeSession.location || 'Location Unavailable',
-        ipAddress,
-        username: user.username,
-        duration: breakDuration,
-        note: `Break duration: ${Math.floor(breakDuration / 60)}m ${breakDuration % 60}s`
-      })
-
-      return NextResponse.json({ 
-        success: true,
-        breakTimeUsed: newTotalBreakTime,
-        breakPeriods: breakPeriods
-      })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })

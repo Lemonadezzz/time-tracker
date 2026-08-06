@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     const matchConditions: any = { 
       userId: user.userId.toString(),
-      action: { $in: ['time_in', 'time_out', 'break_start', 'break_end'] }
+      action: { $in: ['time_in', 'time_out'] }
     }
     
     if (startDate && endDate) {

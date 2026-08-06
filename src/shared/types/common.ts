@@ -2,12 +2,6 @@
  * Common types used across the application
  */
 
-export interface BreakPeriod {
-  startTime: string
-  endTime: string
-  duration: number
-}
-
 export interface Pagination {
   currentPage: number
   totalPages: number

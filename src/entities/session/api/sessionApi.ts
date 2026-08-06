@@ -45,23 +45,5 @@ export const sessionApi = {
         'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone
       }
     })
-  },
-
-  /**
-   * Start a break
-   */
-  async startBreak(): Promise<SessionActionResponse> {
-    return apiClient.post<SessionActionResponse>(API_ENDPOINTS.SESSION, {
-      action: 'break'
-    })
-  },
-
-  /**
-   * Resume from break
-   */
-  async resumeFromBreak(): Promise<SessionActionResponse> {
-    return apiClient.post<SessionActionResponse>(API_ENDPOINTS.SESSION, {
-      action: 'resume'
-    })
   }
 }

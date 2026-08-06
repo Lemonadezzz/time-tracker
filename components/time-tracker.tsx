@@ -4,32 +4,23 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-
-import { Play, Calendar, Clock, Coffee } from "lucide-react"
+import { Calendar, Clock } from "lucide-react"
 import DayTimeline from "./day-timeline"
-
 import { timeEntriesService } from "@/lib/timeEntries"
 
 interface TimeEntry {
   _id?: string
-  date: string // YYYY-MM-DD
-  timeIn: string // HH:MM AM/PM
-  timeOut: string | null // HH:MM AM/PM
-  duration: number // in seconds
-  location?: string // Location where time was tracked
-  breakPeriods?: Array<{
-    startTime: string
-    endTime: string
-    duration: number
-  }>
+  date: string
+  timeIn: string
+  timeOut: string | null
+  duration: number
+  location?: string
 }
 
 export default function Component() {
   const [isTracking, setIsTracking] = useState(false)
-  const [isOnBreak, setIsOnBreak] = useState(false)
   const [currentSessionStart, setCurrentSessionStart] = useState<Date | null>(null)
   const [currentSessionTime, setCurrentSessionTime] = useState(0)
-  const [pausedSessionTime, setPausedSessionTime] = useState(0) // Time when break started
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loading, setLoading] = useState(true)
@@ -37,15 +28,6 @@ export default function Component() {
   const [locality, setLocality] = useState<string>('')
   const [principalSubdivision, setPrincipalSubdivision] = useState<string>('')
   const [buttonCooldown, setButtonCooldown] = useState(false)
-  const [breakTimeRemaining, setBreakTimeRemaining] = useState(5400) // 1.5 hours in seconds
-  const [breakTimeUsed, setBreakTimeUsed] = useState(0)
-  const [breakStartTime, setBreakStartTime] = useState<Date | null>(null)
-  const [currentBreakDuration, setCurrentBreakDuration] = useState(0)
-  const [completedBreakPeriods, setCompletedBreakPeriods] = useState<Array<{
-    startTime: string
-    endTime: string
-    duration: number
-  }>>([])
   const [sevenHourNotificationShown, setSevenHourNotificationShown] = useState(false)
   const locationRequestedRef = useRef(false)
   const isStoppingRef = useRef(false)
@@ -100,17 +82,13 @@ export default function Component() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords
-
-          // Get location
           const locationResponse = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
           const locationData = await locationResponse.json()
           const localityData = locationData.locality || 'Unknown Locality'
           const regionData = locationData.principalSubdivision || 'Unknown Region'
-
           setLocality(localityData)
           setPrincipalSubdivision(regionData)
 
-          // Get weather
           const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=celsius`)
           const weatherData = await weatherResponse.json()
           const temp = Math.round(weatherData.current_weather.temperature)
@@ -118,20 +96,6 @@ export default function Component() {
           const weatherEmoji = getWeatherEmoji(weatherCode)
 
           setLocation(`${weatherEmoji} ${temp}°C — ${localityData}, ${regionData}`)
-
-          toast.success("Location updated", {
-            description: (
-              <div>
-                <div>{`${localityData}, ${regionData}`}</div>
-                <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-                  <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
-                    animation: 'progress 3s linear forwards'
-                  }}></div>
-                </div>
-              </div>
-            ),
-            duration: 3000
-          })
         } catch (error) {
           setLocation('Location unavailable')
           setLocality('Location Unavailable')
@@ -140,24 +104,8 @@ export default function Component() {
       () => {
         setLocation('Location access denied')
         setLocality('Location Unavailable')
-        toast.error("Location denied", {
-          description: (
-            <div>
-              <div>Location access was denied</div>
-              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-                <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
-                  animation: 'progress 3s linear forwards'
-                }}></div>
-              </div>
-            </div>
-          ),
-          duration: 3000
-        })
       },
-      {
-        timeout: 10000,
-        enableHighAccuracy: true
-      }
+      { timeout: 10000, enableHighAccuracy: true }
     )
   }
 
@@ -197,43 +145,14 @@ export default function Component() {
         const sessionStart = new Date(data.sessionStart)
         const now = new Date()
         
-        // Set session start and break tracking first
         setCurrentSessionStart(sessionStart)
-        setBreakTimeUsed(data.breakTimeUsed || 0)
+        const totalElapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
+        setCurrentSessionTime(Math.max(0, totalElapsed))
         
-        if (data.isOnBreak && data.currentBreakStart) {
-          // Currently on break - calculate work time before break started
-          const breakStartTime = new Date(data.currentBreakStart)
-          const totalElapsedBeforeBreak = Math.floor((breakStartTime.getTime() - sessionStart.getTime()) / 1000)
-          const workTimeBeforeBreak = totalElapsedBeforeBreak - (data.breakTimeUsed || 0)
-          
-          setPausedSessionTime(Math.max(0, workTimeBeforeBreak))
-          setCurrentSessionTime(Math.max(0, workTimeBeforeBreak))
-          setBreakStartTime(breakStartTime)
-          setIsOnBreak(true)
-        } else {
-          // Not on break - calculate current work time
-          const totalElapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
-          const workTime = totalElapsed - (data.breakTimeUsed || 0)
-          setCurrentSessionTime(Math.max(0, workTime))
-          setPausedSessionTime(0)
-          setIsOnBreak(false)
-        }
-        
-        // Set tracking state last to trigger timer effect with all data ready
         setIsTracking(true)
-
-        // Show auto-resume notification if applicable
-        if (data.autoResumed) {
-          toast.info("Break time limit reached", {
-            description: "Work automatically resumed after 1.5 hours of break time."
-          })
-        }
-      } else {
-        setBreakTimeUsed(data.breakTimeUsed || 0)
       }
     } catch (error) {
-      // Session check failed silently
+      // Failed silently
     } finally {
       setLoading(false)
     }
@@ -244,53 +163,36 @@ export default function Component() {
       const { entries } = await timeEntriesService.getEntries()
       setTimeEntries(entries)
     } catch (error) {
-      // Failed to load entries silently
+      // Failed silently
     }
   }
 
-  // Timer effect - Update every second when tracking
   useEffect(() => {
     if (!isTracking || !currentSessionStart) return
 
     const calculateTime = () => {
-      if (isOnBreak) {
-        // During break, keep work timer frozen at paused time
-        setCurrentSessionTime(pausedSessionTime)
-        // But update break elapsed counter
-        if (breakStartTime) {
-          const elapsed = Math.floor((new Date().getTime() - breakStartTime.getTime()) / 1000)
-          setCurrentBreakDuration(elapsed)
-        }
-      } else {
-        // Not on break: calculate work time from session start minus break time
-        const now = new Date()
-        const totalElapsed = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
-        const workTime = totalElapsed - breakTimeUsed
-        setCurrentSessionTime(Math.max(0, workTime))
-        
-        // Check if 7 hours reached and show notification
-        const sevenHours = 7 * 60 * 60 // 7 hours in seconds
-        if (workTime >= sevenHours && !sevenHourNotificationShown) {
-          setSevenHourNotificationShown(true)
-          showBrowserNotification(
-            'Don\'t forget to clock out soon!',
-            'You\'ve been working for 7 hours. Remember to stop your timer when you\'re done.'
-          )
-          toast.info('Don\'t forget to clock out soon!', {
-            description: 'You\'ve been working for 7 hours. Remember to stop your timer when you\'re done.',
-            duration: 10000
-          })
-        }
+      const now = new Date()
+      const totalElapsed = Math.floor((now.getTime() - currentSessionStart.getTime()) / 1000)
+      setCurrentSessionTime(Math.max(0, totalElapsed))
+      
+      const sevenHours = 7 * 60 * 60
+      if (totalElapsed >= sevenHours && !sevenHourNotificationShown) {
+        setSevenHourNotificationShown(true)
+        showBrowserNotification(
+          'Don\'t forget to clock out soon!',
+          'You\'ve been working for 7 hours. Remember to stop your timer when you\'re done.'
+        )
+        toast.info('Don\'t forget to clock out soon!', {
+          description: 'You\'ve been working for 7 hours. Remember to stop your timer when you\'re done.',
+          duration: 10000
+        })
       }
 
-      // If computer slept through midnight, force reload
-      const now = new Date()
       if (now.toLocaleDateString('en-CA') !== currentSessionStart.toLocaleDateString('en-CA') && !isStoppingRef.current) {
         window.location.reload()
         return false
       }
 
-      // Auto-stop at 11:59 PM
       if (now.getHours() === 23 && now.getMinutes() >= 59 && !isStoppingRef.current) {
         const stopBtn = document.getElementById('stop-tracking-btn')
         if (stopBtn) {
@@ -304,22 +206,15 @@ export default function Component() {
       return true
     }
 
-    // Calculate immediately on mount/change
     calculateTime()
-
-    // Then set up interval
     const interval = setInterval(() => {
       if (!calculateTime()) {
         clearInterval(interval)
       }
     }, 1000)
-
     return () => clearInterval(interval)
-  }, [isTracking, currentSessionStart, isOnBreak, breakTimeUsed, pausedSessionTime, breakStartTime, sevenHourNotificationShown])
+  }, [isTracking, currentSessionStart, sevenHourNotificationShown])
 
-  // Break time monitoring effect - REMOVED (no more break limits)
-
-  // Update current time display
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date())
@@ -341,16 +236,7 @@ export default function Component() {
 
     if (now.getHours() < 6 || now.getHours() >= 22) {
       toast.error("Cannot start timer", {
-        description: (
-          <div>
-            <div>Work hours are 6:00 AM - 10:00 PM</div>
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
-                animation: 'progress 3s linear forwards'
-              }}></div>
-            </div>
-          </div>
-        ),
+        description: "Work hours are 6:00 AM - 10:00 PM",
         duration: 3000
       })
       return
@@ -363,7 +249,6 @@ export default function Component() {
       const token = localStorage.getItem('authToken')
       const sessionId = localStorage.getItem('sessionId') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       
-      // Store session ID if it was generated
       if (!localStorage.getItem('sessionId')) {
         localStorage.setItem('sessionId', sessionId)
       }
@@ -384,192 +269,35 @@ export default function Component() {
         const sessionStartDate = new Date(data.sessionStart)
         setCurrentSessionStart(sessionStartDate)
         setCurrentSessionTime(0)
-        setBreakTimeUsed(0)
-        setPausedSessionTime(0)
-        setCompletedBreakPeriods([]) // Reset completed breaks for new session
-        setSevenHourNotificationShown(false) // Reset notification flag for new session
+        setSevenHourNotificationShown(false)
         setIsTracking(true)
 
-        // Store the session ID returned from server
         if (data.sessionId) {
           localStorage.setItem('sessionId', data.sessionId)
         }
 
-        // Notify other tabs
         localStorage.setItem('sessionSync', Date.now().toString())
 
         toast.success("Started working", {
-          description: (
-            <div>
-              <div>Time tracking is now active</div>
-              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-                <div className="bg-green-500 h-1 rounded-full animate-[progress_2s_linear_forwards]" style={{
-                  animation: 'progress 2s linear forwards'
-                }}></div>
-              </div>
-            </div>
-          ),
+          description: "Time tracking is now active",
           duration: 2000
         })
       }
     } catch (error) {
       toast.error("Failed to start timer", {
-        description: (
-          <div>
-            <div>Please try again</div>
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-              <div className="bg-red-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
-                animation: 'progress 3s linear forwards'
-              }}></div>
-            </div>
-          </div>
-        ),
+        description: "Please try again",
         duration: 3000
       })
     }
   }
 
-  const handleTakeBreak = async () => {
-    if (buttonCooldown || !isTracking) return
-    
-    // Check if user is authenticated for break actions
-    const token = localStorage.getItem('authToken')
-    if (!token) {
-      toast.error("Authentication required", {
-        description: "Please log in to take a break. Timer continues running.",
-        duration: 5000
-      })
-      return
-    }
-    
-    setButtonCooldown(true)
-    setTimeout(() => setButtonCooldown(false), 1500)
-    
-    try {
-      const sessionId = localStorage.getItem('sessionId')
-      const response = await fetch('/api/session', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-Session-Id': sessionId || ''
-        },
-        body: JSON.stringify({ action: 'break' })
-      })
-      const data = await response.json()
-      
-      if (data.success) {
-        const now = new Date()
-        // Store current work time as paused time
-        setPausedSessionTime(currentSessionTime)
-        setIsOnBreak(true)
-        setBreakStartTime(now)
-        setCurrentBreakDuration(0)
-        
-        // Notify other tabs
-        localStorage.setItem('sessionSync', Date.now().toString())
-        
-        toast.success("Break started", {
-          description: (
-            <div>
-              <div>Timer paused for break</div>
-              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-                <div className="bg-blue-500 h-1 rounded-full animate-[progress_2s_linear_forwards]" style={{
-                  animation: 'progress 2s linear forwards'
-                }}></div>
-              </div>
-            </div>
-          ),
-          duration: 2000
-        })
-      }
-    } catch (error) {
-      toast.error("Failed to start break", {
-        description: "Please try again"
-      })
-    }
-  }
-
-  const handleResumeWork = async () => {
-    if (buttonCooldown || !isTracking) return
-    
-    // Check if user is authenticated for resume actions
-    const token = localStorage.getItem('authToken')
-    if (!token) {
-      toast.error("Authentication required", {
-        description: "Please log in to resume work. Timer continues running.",
-        duration: 5000
-      })
-      return
-    }
-    
-    setButtonCooldown(true)
-    setTimeout(() => setButtonCooldown(false), 1500)
-    
-    try {
-      const sessionId = localStorage.getItem('sessionId')
-      const response = await fetch('/api/session', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-Session-Id': sessionId || ''
-        },
-        body: JSON.stringify({ action: 'resume' })
-      })
-      const data = await response.json()
-      
-      if (data.success && breakStartTime) {
-        const now = new Date()
-        const breakDuration = Math.floor((now.getTime() - breakStartTime.getTime()) / 1000)
-        
-        // Store completed break period for live visualization
-        setCompletedBreakPeriods(prev => [...prev, {
-          startTime: breakStartTime.toISOString(),
-          endTime: now.toISOString(),
-          duration: breakDuration
-        }])
-        
-        // Update break time tracking from server
-        const newBreakTimeUsed = data.breakTimeUsed || 0
-        setBreakTimeUsed(newBreakTimeUsed)
-        
-        // End break state
-        setIsOnBreak(false)
-        setBreakStartTime(null)
-        setCurrentBreakDuration(0)
-        
-        // Notify other tabs
-        localStorage.setItem('sessionSync', Date.now().toString())
-        
-        toast.success("Work resumed", {
-          description: (
-            <div>
-              <div>Timer resumed from break</div>
-              <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-                <div className="bg-green-500 h-1 rounded-full animate-[progress_2s_linear_forwards]" style={{
-                  animation: 'progress 2s linear forwards'
-                }}></div>
-              </div>
-            </div>
-          ),
-          duration: 2000
-        })
-      }
-    } catch (error) {
-      toast.error("Failed to resume work", {
-        description: "Please try again"
-      })
-    }
-  }
   const handleTimeOut = async () => {
     if (!currentSessionStart || buttonCooldown || isStoppingRef.current) return
 
     isStoppingRef.current = true
     setButtonCooldown(true)
     setIsTracking(false)
-    setIsOnBreak(false) // Reset break state when stopping
-    setSevenHourNotificationShown(false) // Reset notification flag when stopping
+    setSevenHourNotificationShown(false)
 
     const sessionStart = currentSessionStart
     const sessionTime = currentSessionTime
@@ -578,28 +306,7 @@ export default function Component() {
 
     const now = new Date()
     const totalElapsed = Math.floor((now.getTime() - sessionStart.getTime()) / 1000)
-    const workDuration = totalElapsed - breakTimeUsed // CRITICAL FIX: Exclude break time
     const currentLocation = locality && principalSubdivision ? `${locality}, ${principalSubdivision}` : 'Location Unavailable'
-
-    // Get break periods from the session
-    let breakPeriods: any[] = []
-    try {
-      const token = localStorage.getItem('authToken')
-      const sessionId = localStorage.getItem('sessionId')
-      const sessionResponse = await fetch('/api/session', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
-          'X-Session-Id': sessionId || ''
-        }
-      })
-      if (sessionResponse.ok) {
-        const sessionData = await sessionResponse.json()
-        breakPeriods = sessionData.breakPeriods || []
-      }
-    } catch (error) {
-      // Failed to get break periods
-    }
 
     const newEntry = {
       date: now.toLocaleDateString("en-CA"),
@@ -613,16 +320,13 @@ export default function Component() {
         hour: "2-digit",
         minute: "2-digit",
       }),
-      duration: workDuration, // CRITICAL FIX: Use work duration (excludes breaks)
-      location: currentLocation,
-      breakPeriods: breakPeriods
+      duration: totalElapsed,
+      location: currentLocation
     }
 
     try {
-      // Save entry first (most important)
       await timeEntriesService.createEntry(newEntry)
 
-      // Stop session in background (less critical)
       const token = localStorage.getItem('authToken')
       const sessionId = localStorage.getItem('sessionId')
       fetch('/api/session', {
@@ -636,29 +340,16 @@ export default function Component() {
         body: JSON.stringify({ action: 'stop', location: currentLocation })
       }).catch(() => {})
 
-      // Notify other tabs
       localStorage.setItem('sessionSync', Date.now().toString())
 
       await loadTimeEntries()
 
       toast.success("Stopped working", {
-        description: (
-          <div>
-            <div>Session duration: {formatTimerDisplay(sessionTime)}</div>
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-              <div className="bg-green-500 h-1 rounded-full animate-[progress_3s_linear_forwards]" style={{
-                animation: 'progress 3s linear forwards'
-              }}></div>
-            </div>
-          </div>
-        ),
+        description: `Session duration: ${formatTimerDisplay(sessionTime)}`,
         duration: 3000
       })
     } catch (error) {
-      toast.error("Failed to stop timer", {
-        description: "Please try again"
-      })
-      // Restore state on failure
+      toast.error("Failed to stop timer", { description: "Please try again" })
       setIsTracking(true)
       setCurrentSessionStart(sessionStart)
       setCurrentSessionTime(sessionTime)
@@ -673,11 +364,9 @@ export default function Component() {
     const todayConsolidated = timeEntries.find((entry) => entry.date === today)
     const individualEntries = (todayConsolidated?.entries || []).map(entry => ({
       ...entry,
-      date: today,
-      breakPeriods: entry.breakPeriods || todayConsolidated?.breakPeriods || []
+      date: today
     }))
 
-    // If currently tracking, add live session to the list
     if (isTracking && currentSessionStart) {
       const liveEntry = {
         _id: 'live-session',
@@ -688,10 +377,7 @@ export default function Component() {
           minute: "2-digit",
         }),
         timeOut: null,
-        duration: currentSessionTime,
-        isOnBreak: isOnBreak,
-        breakStartTime: breakStartTime ? breakStartTime.toISOString() : undefined,
-        breakPeriods: completedBreakPeriods // CRITICAL FIX: Include completed breaks for live visualization
+        duration: currentSessionTime
       }
       return [...individualEntries, liveEntry]
     }
@@ -710,146 +396,57 @@ export default function Component() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Section - Mobile only, tucked at top */}
       {!loading && (
         <div className="md:hidden bg-card">
           <div className="px-3 py-4">
-            <h1 className="text-xl font-bold text-foreground">
-              {getGreeting()}!
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {location || 'Getting your location...'}
-            </p>
+            <h1 className="text-xl font-bold text-foreground">{getGreeting()}!</h1>
+            <p className="text-sm text-muted-foreground mt-1">{location || 'Getting your location...'}</p>
           </div>
         </div>
       )}
 
-      {/* Main Content */}
       <div className="max-w-6xl mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
-        {/* Greeting - Desktop only */}
         {!loading && (
           <div className="hidden md:block text-left px-1">
-            <h1 className="text-3xl font-bold text-foreground">
-              {getGreeting()}!
-            </h1>
-            <p className="text-base text-muted-foreground mt-1">
-              {location || 'Getting your location...'}
-            </p>
+            <h1 className="text-3xl font-bold text-foreground">{getGreeting()}!</h1>
+            <p className="text-base text-muted-foreground mt-1">{location || 'Getting your location...'}</p>
           </div>
         )}
-        {/* Timer Card */}
         <Card className="text-center">
           <CardContent className="p-4 md:p-6">
-            {/* Mobile: Stack vertically, Desktop: Side by side */}
             <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-6 md:space-y-0">
-              {/* Left Side: Current Time & Date */}
               <div className="flex-1 text-center md:text-left space-y-2 md:space-y-2">
                 <div className="text-2xl md:text-2xl font-mono font-bold text-primary">
-                  {currentTime.toLocaleTimeString("en-US", {
-                    hour12: true,
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {currentTime.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
                 </div>
                 <div className="text-xs md:text-sm text-muted-foreground">
-                  {currentTime.toLocaleDateString("en-US", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {currentTime.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                 </div>
                 {isTracking && currentSessionStart ? (
                   <div className="text-sm md:text-lg text-muted-foreground">
-                    {isOnBreak && breakStartTime ? (
-                      <>
-                        Break started at{" "}
-                        <span className="font-semibold text-blue-600">
-                          {breakStartTime.toLocaleTimeString("en-US", {
-                            hour12: true,
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        Started at{" "}
-                        <span className="font-semibold text-primary">
-                          {currentSessionStart.toLocaleTimeString("en-US", {
-                            hour12: true,
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </>
-                    )}
+                    Started at <span className="font-semibold text-primary">
+                      {currentSessionStart.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                    </span>
                   </div>
                 ) : (
                   <div className="text-sm md:text-lg text-muted-foreground">Ready to start tracking</div>
                 )}
               </div>
 
-              {/* Right Side: Elapsed Timer and Button */}
               <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
-                {/* Elapsed Timer */}
                 <div className="text-center">
                   {loading ? (
-                    <div className="text-4xl md:text-6xl font-mono font-bold text-muted-foreground">
-                      --:--:--
-                    </div>
+                    <div className="text-4xl md:text-6xl font-mono font-bold text-muted-foreground">--:--:--</div>
                   ) : (
                     <div className="text-4xl md:text-6xl font-mono font-bold text-primary">
                       {formatTimerDisplay(currentSessionTime)}
                     </div>
                   )}
                   <div className="text-xs md:text-sm text-muted-foreground mt-1 md:mt-1">
-                    {loading ? "Loading..." : (
-                      isTracking ? (
-                        isOnBreak ? (
-                          <>
-                            On Break • {formatTimerDisplay(currentBreakDuration)} elapsed
-                          </>
-                        ) : (
-                          "Elapsed Time"
-                        )
-                      ) : (
-                        "Session Time"
-                      )
-                    )}
+                    {loading ? "Loading..." : (isTracking ? "Elapsed Time" : "Session Time")}
                   </div>
-                  
-                  {/* Take a Break / Resume Button */}
-                  {isTracking && (
-                    <div className="mt-3">
-                      {!isOnBreak ? (
-                        <Button
-                          onClick={handleTakeBreak}
-                          variant="outline"
-                          size="sm"
-                          className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300"
-                          disabled={buttonCooldown}
-                        >
-                          <Coffee className="w-4 h-4 mr-2" />
-                          Take a Break
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleResumeWork}
-                          variant="outline"
-                          size="sm"
-                          className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:border-green-300"
-                          disabled={buttonCooldown}
-                        >
-                          <Play className="w-4 h-4 mr-2" />
-                          Resume Work
-                        </Button>
-                      )}
-                    </div>
-                  )}
                 </div>
 
-                {/* Timer Button */}
                 <div className="flex justify-center">
                   {loading ? (
                     <Button size="lg" className="gap-2 rounded-full w-16 h-16 md:w-16 md:h-16 p-0" disabled>
@@ -857,38 +454,15 @@ export default function Component() {
                     </Button>
                   ) : !isTracking ? (
                     <div className="relative">
-                      <Button
-                        onClick={handleTimeIn}
-                        size="lg"
-                        className="gap-2 rounded-full w-20 h-20 md:w-24 md:h-24 p-0 cursor-pointer relative overflow-hidden"
-                        disabled={buttonCooldown}
-                      >
+                      <Button onClick={handleTimeIn} size="lg" className="gap-2 rounded-full w-20 h-20 md:w-24 md:h-24 p-0 cursor-pointer relative overflow-hidden" disabled={buttonCooldown}>
                         <span className="text-4xl md:text-5xl font-bold relative z-10">▶</span>
-                        {buttonCooldown && (
-                          <div className="absolute inset-0 bg-gray-400/50 rounded-full animate-pulse" />
-                        )}
                       </Button>
-                      {buttonCooldown && (
-                        <div className="absolute inset-0 bg-gray-500/30 rounded-full animate-[slideIn_3s_ease-out]" />
-                      )}
                     </div>
                   ) : (
                     <div className="relative">
-                      <Button
-                        id="stop-tracking-btn"
-                        onClick={handleTimeOut}
-                        size="lg"
-                        className="gap-2 rounded-full w-20 h-20 md:w-24 md:h-24 p-0 cursor-pointer relative overflow-hidden bg-red-600 hover:bg-red-700 text-white"
-                        disabled={buttonCooldown}
-                      >
+                      <Button id="stop-tracking-btn" onClick={handleTimeOut} size="lg" className="gap-2 rounded-full w-20 h-20 md:w-24 md:h-24 p-0 cursor-pointer relative overflow-hidden bg-red-600 hover:bg-red-700 text-white" disabled={buttonCooldown}>
                         <span className="text-4xl md:text-5xl font-bold relative z-10">⏹</span>
-                        {buttonCooldown && (
-                          <div className="absolute inset-0 bg-gray-400/50 rounded-full animate-pulse" />
-                        )}
                       </Button>
-                      {buttonCooldown && (
-                        <div className="absolute inset-0 bg-gray-500/30 rounded-full animate-[slideIn_3s_ease-out]" />
-                      )}
                     </div>
                   )}
                 </div>
@@ -897,7 +471,6 @@ export default function Component() {
           </CardContent>
         </Card>
 
-        {/* Timeline - Mobile: Show total time, Desktop: Full timeline */}
         <Card>
           <CardHeader className="pb-3 md:pb-6">
             <CardTitle className="flex items-center gap-2 text-base md:text-xl">
@@ -913,7 +486,6 @@ export default function Component() {
               </div>
             ) : (
               <>
-                {/* Mobile: Total time worked */}
                 <div className="md:hidden">
                   <div className="flex justify-between items-center py-4">
                     <div className="text-base text-muted-foreground">Time worked</div>
@@ -927,7 +499,6 @@ export default function Component() {
                     </div>
                   </div>
                 </div>
-                {/* Desktop: Timeline view */}
                 <div className="hidden md:block">
                   <DayTimeline entries={todayEntries.map(e => ({ ...e, id: e._id || e.date + e.timeIn }))} />
                 </div>

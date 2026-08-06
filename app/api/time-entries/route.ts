@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
               timeOut: '$timeOut',
               duration: '$duration',
               location: '$location',
-              breakPeriods: '$breakPeriods',
               createdAt: '$createdAt'
             }
           },
@@ -107,7 +106,7 @@ export async function GET(request: NextRequest) {
 
       // Sort entries by time in (handle 12-hour format properly)
       const sortedEntries = validEntries.sort((a, b) => {
-        const parseTime = (timeStr) => {
+        const parseTime = (timeStr: string) => {
           const [time, period] = timeStr.split(' ')
           const [hours, minutes] = time.split(':').map(Number)
           let hour24 = hours
@@ -137,7 +136,6 @@ export async function GET(request: NextRequest) {
         duration: totalDuration, // Total worked time
         location: latestLocation,
         totalDuration: totalDuration, // Same as duration for consistency
-        breakPeriods: dayGroup.entries[0]?.breakPeriods || [], // Use break periods from first entry
         entries: dayGroup.entries // All individual entries for timeline
       }
     })
@@ -168,7 +166,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { date, timeIn, timeOut, duration, location, breakPeriods } = await request.json()
+    const { date, timeIn, timeOut, duration, location } = await request.json()
 
     const db = await getDatabase()
 
@@ -183,7 +181,6 @@ export async function POST(request: NextRequest) {
       timeOut,
       duration,
       location: location || 'Location Unavailable',
-      breakPeriods: breakPeriods || [],
       ipAddress,
       createdAt: now,
       updatedAt: now

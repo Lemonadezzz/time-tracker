@@ -3,17 +3,14 @@
  * Represents a completed work session
  */
 
-import { BreakPeriod } from '@/shared/types/common'
-
 export interface TimeEntry {
   _id?: string
   userId?: string
   date: string // YYYY-MM-DD
   timeIn: string // HH:MM AM/PM
   timeOut: string | null // HH:MM AM/PM
-  duration: number // in seconds (work time only, excludes breaks)
+  duration: number // in seconds
   location?: string
-  breakPeriods?: BreakPeriod[]
   createdAt?: Date
   updatedAt?: Date
 }
@@ -29,5 +26,4 @@ export interface CreateTimeEntryDto {
   timeOut: string
   duration: number
   location: string
-  breakPeriods: BreakPeriod[]
 }
