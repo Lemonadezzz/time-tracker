@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
           ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
           createdAt: autoEndTime,
           updatedAt: autoEndTime,
-          note: 'Auto-closed at midnight'
+          note: 'User forgot to clock out'
         })
 
         await db.collection('action_logs').insertOne({
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
           location: activeSession.location || 'Location Unavailable',
           ipAddress: hashIpAddress(request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'),
           username: user.username,
-          note: 'Auto-closed at midnight'
+          note: 'User forgot to clock out'
         })
 
         await sessions.updateOne(
@@ -112,8 +112,8 @@ export async function POST(request: NextRequest) {
 
       if (existingSession) {
         // Timer already running - just return the existing session
-        return NextResponse.json({ 
-          success: true, 
+        return NextResponse.json({
+          success: true,
           sessionStart: existingSession.startTime,
           message: 'Timer already running'
         })
@@ -154,9 +154,9 @@ export async function POST(request: NextRequest) {
       const now = new Date()
 
       // Find and stop the active session
-      const activeSession = await sessions.findOne({ 
-        userId: new ObjectId(user.userId), 
-        isActive: true 
+      const activeSession = await sessions.findOne({
+        userId: new ObjectId(user.userId),
+        isActive: true
       })
 
       if (!activeSession) {
